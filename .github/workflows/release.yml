@@ -110,14 +110,19 @@ jobs:
       working-directory: ${{github.workspace}}/intermediate/make
       run: make -j$(nproc)
 
-    - name: Package Release
+    - name: Package Release (Windows)
+      if: matrix.platform == 'windows'
+      shell: pwsh
       run: |
-        if [ "${{ matrix.platform }}" = "windows" ]; then
-          cd ${{ github.workspace }} && ${{ github.workspace }}/Tools/generate_package_windows.bat
-        else
-          cd ${{ github.workspace }} && ${{ github.workspace }}/Tools/generate_package_linux.sh
-        fi
+        cd "${{ github.workspace }}"
+        ./Tools/generate_package_windows.bat
+
+    - name: Package Release (Linux)
+      if: matrix.platform == 'linux'
       shell: bash
+      run: |
+        cd "${{ github.workspace }}"
+        "${{ github.workspace }}/Tools/generate_package_linux.sh"
 
     - name: Zip Release
       uses: vimtor/action-zip@v1
