@@ -9,7 +9,7 @@ WORKDIR /build
 RUN cd intermediate/make && make -j$(nproc || echo 4)
 
 # Pull an old version because steamcmd has all kinds of fucked up its folder structure in latest.
-FROM steamcmd/steamcmd:latest@sha256:8b2511e03bb70483e32572957bcf2da3af19a4ab394d66176ee2228419834042 AS steam
+FROM steamcmd/steamcmd:latest@sha256:c374508fe846c0139aea3ddb57e4d32be210cf72ad29e6495f0318506d791c16 AS steam
 
 # Make steamcmd download steam client libraries so we can copy them later.
 RUN steamcmd +login anonymous +quit
