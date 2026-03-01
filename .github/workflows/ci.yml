@@ -76,7 +76,7 @@ jobs:
     - name: Build on Linux
       if: matrix.platform == 'linux'
       working-directory: ${{github.workspace}}/intermediate/make
-      run: make
+      run: make -j$(nproc)
 
   build-nix-gcc:
     name: Build nix w/ gcc

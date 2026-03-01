@@ -105,7 +105,7 @@ jobs:
     - name: Build Linux
       if: matrix.platform == 'linux'
       working-directory: ${{github.workspace}}/intermediate/make
-      run: make
+      run: make -j$(nproc)
 
     - name: Package Release
       run: |
