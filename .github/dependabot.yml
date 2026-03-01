@@ -7,7 +7,14 @@ updates:
     directory: "/" # workflows are in the repo root under .github/workflows
     schedule:
       interval: "weekly"
-
+    # group multiple action updates into a single pull request
+    groups:
+      github-actions:
+        patterns:
+          - "actions/*"
+          - "docker://*"
+          - "*"
+          
   # Enable version updates for Docker
   - package-ecosystem: "docker"
     # Look for a `Dockerfile` in the `root` directory
