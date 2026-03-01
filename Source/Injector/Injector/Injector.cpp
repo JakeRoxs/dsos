@@ -65,7 +65,9 @@ bool Injector::Init()
     // Grab the dll path based on the location of static function.
     HMODULE moduleHandle = nullptr;
     wchar_t modulePath[MAX_PATH] = {};
-    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)&dummyFunction, &moduleHandle) == 0)
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          reinterpret_cast<LPCTSTR>(&dummyFunction),
+                          &moduleHandle) == 0)
     {
         Error("Failed to get dll handle, GetLastError=%u", GetLastError());
         return false;

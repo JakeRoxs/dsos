@@ -63,6 +63,9 @@ jobs:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@main
     - uses: DeterminateSystems/magic-nix-cache-action@main
+    # avoid flakehub login warning
+    - name: Disable FlakeHub registry
+      run: nix registry delete flakehub || true
     - run: nix build -L .
 
   build-nix-clang:
@@ -72,4 +75,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: DeterminateSystems/nix-installer-action@main
     - uses: DeterminateSystems/magic-nix-cache-action@main
+    # avoid flakehub login warning
+    - name: Disable FlakeHub registry
+      run: nix registry delete flakehub || true
     - run: nix build -L .#clang
