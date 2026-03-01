@@ -43,12 +43,12 @@ jobs:
             platform: linux
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: recursive
 
     - name: Cache build artifacts
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       with:
         path: |
           **/intermediate
@@ -73,13 +73,13 @@ jobs:
 
     - name: Set up environment
       if: matrix.platform == 'windows'
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v5
       with:
         dotnet-version: 5.0.x
 
     - name: Add MSBuild to PATH
       if: matrix.platform == 'windows'
-      uses: microsoft/setup-msbuild@v1
+      uses: microsoft/setup-msbuild@v2
 
     - name: Restore Dependencies (Windows)
       if: matrix.platform == 'windows'
@@ -123,7 +123,7 @@ jobs:
         dest: ${{ matrix.platform }}-${{ env.VERSION_NUMBER }}${{ env.VERSION_NUMBER_POSTFIX }}.zip
 
     - name: Upload Artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v7
       with:
         path: ${{ matrix.platform }}-${{ env.VERSION_NUMBER }}${{ env.VERSION_NUMBER_POSTFIX }}.zip
         name: ${{ matrix.platform }}
@@ -148,21 +148,21 @@ jobs:
             tag: ds2os:latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: recursive
 
     - name: Login to DockerHub
-      uses: docker/login-action@v2 
+      uses: docker/login-action@v3 
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
     - name: Build and push ${{ matrix.image.tag }}
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v6
       with:
         context: ${{ matrix.image.context }}
         file: ${{ matrix.image.file }}
@@ -180,13 +180,13 @@ jobs:
     steps:
     - name: Download windows artifact
       id: download-windows-artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v8
       with:
         name: windows
 
     - name: Download linux artifact
       id: download-linux-artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v8
       with:
         name: linux
 
@@ -194,7 +194,7 @@ jobs:
       run: ls -R
 
     - name: Create GitHub release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -205,7 +205,7 @@ jobs:
         prerelease: true
 
     - name: Upload Windows ZIP
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
@@ -213,7 +213,7 @@ jobs:
         files: windows-${{ env.VERSION_NUMBER }}${{ env.VERSION_NUMBER_POSTFIX }}.zip
 
     - name: Upload Linux ZIP
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
