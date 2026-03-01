@@ -43,14 +43,19 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-build-
 
-    - name: Generate Solution
+    - name: Generate Solution (Windows)
+      if: matrix.platform == 'windows'
+      shell: cmd
       run: |
-        if [ "${{ matrix.platform }}" = "windows" ]; then
-          cd ${{ github.workspace }}/Tools && ${{ github.workspace }}/Tools/generate_vs2022.bat
-        else
-          cd ${{ github.workspace }}/Tools && ${{ github.workspace }}/Tools/generate_make_release.sh
-        fi
+        cd "%GITHUB_WORKSPACE%\Tools"
+        "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
+
+    - name: Generate Solution (Linux)
+      if: matrix.platform == 'linux'
       shell: bash
+      run: |
+        cd "${{ github.workspace }}/Tools"
+        "${{ github.workspace }}/Tools/generate_make_release.sh"
 
     - name: Add MSBuild to PATH
       if: matrix.platform == 'windows'
