@@ -10,10 +10,38 @@
 
 #include "Server/Server.h"
 #include "Server/GameService/GameClient.h"
-#include "Server/GameService/DS2_PlayerState.h"
-#include "Server/GameService/DS3_PlayerState.h"
-#include "Server/Streams/DS2_Frpg2ReliableUdpMessage.h"
-#include "Server/Streams/DS3_Frpg2ReliableUdpMessage.h"
+
+// DS2 headers aren't present when only building the DS3 target; use
+// __has_include so the shared utilities can be compiled by either project
+// without forcing the DS2 include path to be added globally.
+#if __has_include("Server/GameService/DS2_PlayerState.h")
+#  include "Server/GameService/DS2_PlayerState.h"
+#  include "Server/Streams/DS2_Frpg2ReliableUdpMessage.h"
+#  include "Server/GameService/Utils/DS2_GameIds.h"  // needed for DS2_OnlineAreaId etc.
+#else
+// forward-declare a few DS2 types used in templates so that this header
+// stays valid even when the DS2 target isn't part of the build.
+struct DS2_PlayerState;
+namespace DS2_Frpg2PlayerData {
+    class AllStatus;
+}
+enum class DS2_OnlineAreaId : int;
+#endif
+
+// DS3 headers may also be absent when only building the DS2 target; mirror
+// the DS2 pattern above so this header stays self-contained.
+#if __has_include("Server/GameService/DS3_PlayerState.h")
+#  include "Server/GameService/DS3_PlayerState.h"
+#  include "Server/Streams/DS3_Frpg2ReliableUdpMessage.h"
+#else
+// forward declarations for the few DS3 types referenced in templates
+struct DS3_PlayerState;
+namespace DS3_Frpg2PlayerData {
+    class AllStatus;
+}
+enum class DS3_OnlineAreaId : int;
+#endif
+
 #include "Shared/Core/Utils/Logging.h"
 #include "Shared/Core/Utils/Strings.h"
 
@@ -48,7 +76,8 @@ inline void MaybeSendBonfireDiscord(Server* server,
 // forward declarations for traits
 template<typename PlayerState, typename AllStatus> struct StatusClearer;
 
-// DS3 specialization
+// DS3 specialization (only if DS3 headers are present)
+#if __has_include("Server/GameService/DS3_PlayerState.h")
 template<>
 struct StatusClearer<DS3_PlayerState, DS3_Frpg2PlayerData::AllStatus>
 {
@@ -68,8 +97,10 @@ struct StatusClearer<DS3_PlayerState, DS3_Frpg2PlayerData::AllStatus>
         }
     }
 };
+#endif
 
-// DS2 specialization
+// DS2 specialization (only available if DS2 headers were included above)
+#if __has_include("Server/GameService/DS2_PlayerState.h")
 template<>
 struct StatusClearer<DS2_PlayerState, DS2_Frpg2PlayerData::AllStatus>
 {
@@ -93,6 +124,8 @@ struct StatusClearer<DS2_PlayerState, DS2_Frpg2PlayerData::AllStatus>
         }
     }
 };
+#endif
+
 
 // generic entry point used by both games
 
@@ -114,16 +147,38 @@ inline void HandleAreaChange(PlayerState& state, const std::shared_ptr<GameClien
     if (!state.GetPlayerStatus().has_player_location())
         return;
 
-    using AreaIdType = std::conditional_t<std::is_same_v<PlayerState, DS3_PlayerState>,
-                                         DS3_OnlineAreaId,
-                                         DS2_OnlineAreaId>;
-
-    AreaIdType AreaId = static_cast<AreaIdType>(state.GetPlayerStatus().player_location().online_area_id());
-    if (AreaId != state.GetCurrentArea() && AreaId != AreaIdType::None)
+    // choose the correct online-area enum depending on which game state we
+    // are operating on.  We avoid naming DS2_OnlineAreaId in builds that don't
+    // have the DS2 headers available by using an if constexpr instead of
+    // std::conditional_t.
+    
+    if constexpr (std::is_same_v<PlayerState, DS3_PlayerState>)
     {
-        VerboseS(client->GetName().c_str(), "User has entered '%s' (0x%08x)",
-                 GetEnumString(AreaId).c_str(), AreaId);
-        state.SetCurrentArea(AreaId);
+        DS3_OnlineAreaId AreaId = static_cast<DS3_OnlineAreaId>(
+            state.GetPlayerStatus().player_location().online_area_id());
+        if (AreaId != state.GetCurrentArea() && AreaId != DS3_OnlineAreaId::None)
+        {
+            VerboseS(client->GetName().c_str(), "User has entered '%s' (0x%08x)",
+                     GetEnumString(AreaId).c_str(), AreaId);
+            state.SetCurrentArea(AreaId);
+        }
+    }
+    else
+    {
+        // DS2 path: DS2_OnlineAreaId is guaranteed to be defined when the DS2
+        // headers are available (we included DS2_GameIds.h above inside
+        // __has_include guard).  This branch will be discarded when building
+        // for DS3 since the condition is false, so a missing DS2 type won't be
+        // an error.
+        using AreaIdType = DS2_OnlineAreaId;
+        AreaIdType AreaId = static_cast<AreaIdType>(
+            state.GetPlayerStatus().player_location().online_area_id());
+        if (AreaId != state.GetCurrentArea() && AreaId != AreaIdType::None)
+        {
+            VerboseS(client->GetName().c_str(), "User has entered '%s' (0x%08x)",
+                     GetEnumString(AreaId).c_str(), AreaId);
+            state.SetCurrentArea(AreaId);
+        }
     }
 
     if constexpr (std::is_same_v<PlayerState, DS2_PlayerState>)

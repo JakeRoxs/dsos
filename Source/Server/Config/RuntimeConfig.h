@@ -566,7 +566,7 @@ public:
     // Send notifications when a quick match begins.
     bool SendDiscordNotice_QuickMatch = true;
 
-    // Send notifications when a player lits bonfire.
+    // Send notifications when a player lights a bonfire.
     bool SendDiscordNotice_BonfireLit = true;
 
     // Send notifications when a bell is rung.

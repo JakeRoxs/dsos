@@ -27,6 +27,7 @@ std::string StringFormat(const char* format, Args... args)
     std::unique_ptr<char[]> buffer(new char[size]);
     snprintf(buffer.get(), size, format, args ...);
 
+
     return std::string(buffer.get(), buffer.get() + size - 1); // We don't want the '\0' inside
 }
 
