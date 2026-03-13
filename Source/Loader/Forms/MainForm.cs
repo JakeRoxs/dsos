@@ -7,6 +7,7 @@
  * If not, see <https://opensource.org/licenses/MIT>.
  */
 
+#nullable enable
 using System;
 using System.IO;
 using System.Diagnostics;
@@ -19,10 +20,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
+using Loader.Services;
 
 namespace Loader
 {
@@ -35,9 +36,13 @@ namespace Loader
     public partial class MainForm : Form
     {
         private ServerConfigList ServerList = new ServerConfigList();
+        private ServerListManager serverManager;
+
         private IntPtr RunningProcessHandle = IntPtr.Zero;
         private uint RunningProcessId = 0;
-        private Task QueryServerTask = null;
+        private Task? QueryServerTask = null;
+        private CancellationTokenSource? _queryServerCts;
+        private CancellationTokenSource? _updateServerIpCts;
 
         private GameType CurrentGameType = GameType.DarkSouls3;
 
@@ -59,6 +64,19 @@ namespace Loader
 
             MachinePrivateIp = NetUtils.GetMachineIPv4(false);
             MachinePublicIp = NetUtils.GetMachineIPv4(true);
+
+            // manager will be initialized once config is loaded
+            serverManager = new ServerListManager(ServerList, CurrentGameType);
+
+            _queryServerCts = new CancellationTokenSource();
+            _updateServerIpCts = new CancellationTokenSource();
+            this.FormClosing += MainForm_FormClosing;
+        }
+
+        private void MainForm_FormClosing(object? sender, FormClosingEventArgs e)
+        {
+            _queryServerCts?.Cancel();
+            _updateServerIpCts?.Cancel();
         }
 
         private void SaveConfig()
@@ -115,7 +133,7 @@ namespace Loader
             bool HasSelectedManualServer = false;
             if (ImportedServerListView.SelectedIndices.Count > 0)
             {
-                HasSelectedManualServer = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig).Id).ManualImport;
+                HasSelectedManualServer = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id)!.ManualImport;
             }
             //RemoveButton.Enabled = HasSelectedManualServer;
 
@@ -146,128 +164,14 @@ namespace Loader
             RefreshButton.Enabled = (QueryServerTask != null);
         }
 
-        private bool ShouldShowServer(ServerConfig Config)
-        {
-            if (Config.ManualImport)
-            {
-                return true;
-            }            
-            
-            if (Config.GameType != CurrentGameType.ToString())
-            {
-                return false;
-            }
-
-            string filter = filterBox.Text.ToLower();
-            if (!string.IsNullOrWhiteSpace(filter))
-            {
-                if (!Config.Name.ToLower().Contains(filter) && !Config.Description.ToLower().Contains(filter))
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                if (Config.PasswordRequired && hidePasswordedBox.Checked)
-                {
-                    return false;
-                }
-                if (Config.PlayerCount < minimumPlayersBox.Value)
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
 
         private void BuildServerList()
         {
-            foreach (ServerConfig Config in ServerList.Servers)
-            {
-                if (!ShouldShowServer(Config))
-                {
-                    continue;
-                }
-
-                ListViewItem ServerItem = null;
-
-                foreach (ListViewItem ViewItem in ImportedServerListView.Items)
-                {
-                    if ((ViewItem.Tag as ServerConfig).Id == Config.Id)
-                    {
-                        ServerItem = ViewItem;
-                        break;
-                    }
-                }
-
-                if (ServerItem == null)
-                {
-                    ServerItem = new ListViewItem(new string[3], -1);
-                    ImportedServerListView.Items.Add(ServerItem);
-                }
-
-                bool IsOfficial = (Config.Hostname == OfficialServer && !Config.IsShard);
-
-                ServerItem.Text = Config.Name;
-                ServerItem.Tag = Config;
-                ServerItem.SubItems[0].Text = Config.Name;
-                ServerItem.SubItems[1].Text = Config.ManualImport ? "Not Available For Manual Import" : Config.PlayerCount.ToString();
-                ServerItem.SubItems[2].Text = Config.Description;
-                ServerItem.BackColor = (IsOfficial ? Color.PaleGoldenrod : Color.Transparent);
-
-                if (IsOfficial)
-                {
-                    ServerItem.ImageIndex = 10;
-                }
-                else if (Config.PasswordRequired)
-                {
-                    ServerItem.ImageIndex = 0;
-                }
-                else if (Config.ManualImport)
-                {
-                    ServerItem.ImageIndex = 7;
-                }
-                else
-                {
-                    ServerItem.ImageIndex = 8;
-                }
-                
-            }
-
-            for (int i = 0; i < ImportedServerListView.Items.Count; /* empty */)
-            {
-                ListViewItem ViewItem = ImportedServerListView.Items[i];
-
-                bool Exists = false;
-
-                foreach (ServerConfig Config in ServerList.Servers)
-                {
-                    if (!ShouldShowServer(Config))
-                    {
-                        continue;
-                    }
-                    if (Config.Id == (ViewItem.Tag as ServerConfig).Id)
-                    {
-                        Exists = true;
-                        break;
-                    }
-                }
-
-                if (!Exists)
-                {
-                    ImportedServerListView.Items.RemoveAt(i);
-                }
-                else
-                {
-                    i++;
-                }
-            }
-
-            ImportedServerListView.Sort();
+            var filtered = serverManager.Filter(filterBox.Text, hidePasswordedBox.Checked, (int)minimumPlayersBox.Value);
+            ServerListViewUpdater.Update(ImportedServerListView, filtered, OfficialServer);
         }
 
-        private void OnLoaded(object sender, EventArgs e)
+        private async void OnLoaded(object sender, EventArgs e)
         {
             string PredictedInstallPath = SteamUtils.GetGameInstallPath("DARK SOULS III") + @"\Game\DarkSoulsIII.exe";
             if (!File.Exists(ProgramSettings.Default.ds3_exe_location) && File.Exists(PredictedInstallPath))
@@ -288,7 +192,10 @@ namespace Loader
             minimumPlayersBox.Value = ProgramSettings.Default.minimum_players;
             ServerConfigList.FromJson(ProgramSettings.Default.server_config_json, out ServerList);
             IgnoreInputChanges = false;
-            
+
+            // create manager now that we have loaded the list
+            serverManager = new ServerListManager(ServerList, CurrentGameType);
+
 #if false//DEBUG
             ProgramSettings.Default.Reset();
             ProgramSettings.Default.master_server_url = "http://127.0.0.1:50020";
@@ -296,19 +203,13 @@ namespace Loader
             
             // Strip out any old config files downloaded from the server, we will be querying them
             // shortly anyway.
-            foreach (ServerConfig Config in ServerList.Servers.ToArray())
-            {
-                if (!Config.ManualImport)
-                {
-                    ServerList.Servers.Remove(Config);
-                }
-            }
+            ServerList.Servers.RemoveAll(s => !s.ManualImport);
             
             ApplyTabSettings();
 
             ValidateUI();
             BuildServerList();
-            QueryServers();
+            await QueryServersAsync(_queryServerCts?.Token ?? CancellationToken.None);
 
             ContinualUpdateTimer.Enabled = ShouldRunContinualUpdate();
 
@@ -355,33 +256,30 @@ namespace Loader
             }
         }
 
-        private ServerConfig CurrentServerConfig;
+        private ServerConfig? CurrentServerConfig;
 
-        private void OnSelectedServerChanged(object sender, EventArgs e)
+        private async void OnSelectedServerChanged(object sender, EventArgs e)
         {
             if (ImportedServerListView.SelectedItems.Count > 0)
             {
-                CurrentServerConfig = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig).Id);
+                CurrentServerConfig = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id);
             }
 
             ValidateUI();
-            UpdateServerIp();
+
+            _updateServerIpCts?.Cancel();
+            _updateServerIpCts = new CancellationTokenSource();
+            await UpdateServerIpAsync(_updateServerIpCts.Token);
         }
 
         private void OnRemoveClicked(object sender, EventArgs e)
         {
             if (ImportedServerListView.SelectedItems.Count > 0)
             {
-                ServerConfig Config = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig).Id);
+                ServerConfig? Config = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id);
+            if (Config == null) return;
 
-                for (int i = 0; i < ServerList.Servers.Count; i++)
-                {
-                    if (ServerList.Servers[i].Hostname == Config.Hostname)
-                    {
-                        ServerList.Servers.RemoveAt(i);
-                        break;
-                    }
-                }
+                ServerList.Servers.RemoveAll(s => s.Hostname == Config.Hostname);
 
                 BuildServerList();
                 SaveConfig();
@@ -389,25 +287,46 @@ namespace Loader
             }
         }
 
-        private void UpdateServerIp()
+        protected virtual Task<string> ResolveConnectIpAsync(ServerConfig config, CancellationToken cancellationToken)
         {
-            ServerConfig UpdateConfig = CurrentServerConfig;
-
-            QueryServerTask = Task.Run(() =>
-            {
-                string Ip = ResolveConnectIp(UpdateConfig);
-
-                this.Invoke((MethodInvoker)delegate
-                {
-                    if (CurrentServerConfig != null && CurrentServerConfig.Hostname == UpdateConfig.Hostname)
-                    {
-                        serverIpBox.Text = Ip;
-                    }
-                });
-            });
+            return Task.Run(() => ResolveConnectIp(config), cancellationToken);
         }
 
-        private void QueryServers()
+        protected virtual Task<string> GetPublicKeyAsync(string id, string password, CancellationToken cancellationToken)
+        {
+            return Task.Run(() => MasterServerApi.GetPublicKey(id, password), cancellationToken);
+        }
+
+        internal async Task UpdateServerIpAsync(ServerConfig updateConfig, CancellationToken cancellationToken)
+        {
+            if (updateConfig == null)
+                return;
+
+            string ip;
+            try
+            {
+                ip = await ResolveConnectIpAsync(updateConfig, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            if (CurrentServerConfig != null && CurrentServerConfig.Hostname == updateConfig.Hostname)
+            {
+                serverIpBox.Text = ip;
+            }
+        }
+
+        protected virtual Task<List<ServerConfig>?> QueryServersFromMasterAsync(CancellationToken cancellationToken)
+        {
+            return Task.Run(() => MasterServerApi.ListServers(), cancellationToken);
+        }
+
+        internal async Task QueryServersAsync(CancellationToken cancellationToken)
         {
             Debug.WriteLine("Querying master server ...");
 
@@ -417,127 +336,51 @@ namespace Loader
             }
 
             RefreshButton.Enabled = false;
+            _queryServerCts?.Cancel();
+            _queryServerCts = new CancellationTokenSource();
+            cancellationToken = _queryServerCts.Token;
 
-            QueryServerTask = Task.Run(() =>
+            QueryServerTask = QueryServersFromMasterAsync(cancellationToken);
+
+            List<ServerConfig>? servers = null;
+            try
             {
-                List<ServerConfig> Servers = MasterServerApi.ListServers();
-                if (Servers != null)
-                {
-                    this.Invoke((MethodInvoker)delegate
-                    {
-                        ProcessServerQueryResponse(Servers);
-                    });
-                }
-                this.Invoke((MethodInvoker)delegate
-                {
-                    RefreshButton.Enabled = true;
-                });
-            });
+                servers = await (Task<List<ServerConfig>?>)QueryServerTask;
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            if (servers != null)
+            {
+                ProcessServerQueryResponse(servers);
+            }
+
+            RefreshButton.Enabled = true;
         }
 
         private void ProcessServerQueryResponse(List<ServerConfig> Servers)
         {
-            // Add new entries.
-            foreach (ServerConfig Server in Servers)
-            {
-                bool Exists = false;
-                foreach (ServerConfig ExistingServer in ServerList.Servers)
-                {
-                    if (ExistingServer.Id == Server.Id)
-                    {
-                        ExistingServer.CopyTransientPropsFrom(Server);
-                        Exists = true;
-                        break;
-                    }
-                }
-
-                if (!Exists)
-                {
-                    ServerList.Servers.Add(Server);
-                }
-            }
-
-            // Remove duplicates
-            for (int i = 0; i < ServerList.Servers.Count; /* empty */)
-            {
-                ServerConfig Server1 = ServerList.Servers[i];
-
-                bool Duplicate = false;
-                for (int j = 0; j < ServerList.Servers.Count; j++)
-                {
-                    ServerConfig Server2 = ServerList.Servers[j];
-
-                    if (i == j)
-                    {
-                        continue;
-                    }
-
-                    if (Server1.Id == Server2.Id)
-                    {
-                        Duplicate = true;
-                        break;
-                    }
-                }
-
-                if (Duplicate)
-                {
-                    ServerList.Servers.RemoveAt(i);
-                }
-                else
-                {
-                    i++;
-                }
-            }
-
-            // Remove servers that no longer exist.
-            for (int i = 0; i < ServerList.Servers.Count; /* empty */)
-            {
-                ServerConfig ExistingServer = ServerList.Servers[i];
-                if (ExistingServer.ManualImport)
-                {
-                    i++;
-                    continue;
-                }
-
-                bool Exists = false;
-                foreach (ServerConfig Server in Servers)
-                {
-                    if (ExistingServer.Id == Server.Id)
-                    {
-                        Exists = true;
-                        break;
-                    }
-                }
-
-                if (!Exists)
-                {
-                    ServerList.Servers.RemoveAt(i);
-                }
-                else
-                {
-                    i++;
-                }
-            }
-
+            serverManager.AddOrUpdate(Servers);
             BuildServerList();
         }
 
-        private ServerConfig GetConfigFromId(string Id)
+        private ServerConfig? GetConfigFromId(string Id)
         {
-            for (int i = 0; i < ServerList.Servers.Count; i++)
-            {
-                if (ServerList.Servers[i].Id == Id)
-                {
-                    return ServerList.Servers[i];
-                }
-            }
-
-            return null;
+            return serverManager.GetById(Id);
         }
 
-        private void OnLaunch(object sender, EventArgs e)
+        private async void OnLaunch(object sender, EventArgs e)
         {
-            ServerConfig Config = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig).Id);
+            ServerConfig? Config = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id);
+            if (Config == null)
+            {
+                return;
+            }
 
             if (string.IsNullOrEmpty(Config.PublicKey))
             {
@@ -551,14 +394,13 @@ namespace Loader
                 }
                 else
                 {
-                    Task GetKeyTask = Task.Run(() =>
+                    try
                     {
-                        Config.PublicKey = MasterServerApi.GetPublicKey(Config.Id, "");
-                    });
-
-                    while (!GetKeyTask.IsCompleted)
+                        Config.PublicKey = await GetPublicKeyAsync(Config.Id, "", _queryServerCts?.Token ?? CancellationToken.None);
+                    }
+                    catch (OperationCanceledException)
                     {
-                        Application.DoEvents();
+                        return;
                     }
 
                     if (string.IsNullOrEmpty(Config.PublicKey))
@@ -568,7 +410,7 @@ namespace Loader
                     }
                 }
             }
-            
+
             PerformLaunch(Config);
         }
 
@@ -628,9 +470,9 @@ namespace Loader
             }
 
             string ExeLocation = ExeLocationTextBox.Text;
-            string ExeDirectory = Path.GetDirectoryName(ExeLocation);
+            string? ExeDirectory = Path.GetDirectoryName(ExeLocation);
  
-            string AppIdFile = Path.Combine(ExeDirectory, "steam_appid.txt");
+            string AppIdFile = Path.Combine(ExeDirectory!, "steam_appid.txt");
             File.WriteAllText(AppIdFile, LoadConfig.SteamAppId.ToString());
 
             STARTUPINFO StartupInfo = new STARTUPINFO();
@@ -659,9 +501,9 @@ namespace Loader
             if (LoadConfig.UseInjector)
             {
                 // Find injector DLL.
-                string DirectoryPath = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
-                string InjectorPath = System.IO.Path.Combine(DirectoryPath, "Injector.dll");
-                string InjectorConfigPath = System.IO.Path.Combine(DirectoryPath, "Injector.config");
+                string? DirectoryPath = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+                string InjectorPath = System.IO.Path.Combine(DirectoryPath!, "Injector.dll");
+                string InjectorConfigPath = System.IO.Path.Combine(DirectoryPath!, "Injector.config");
                 while (!File.Exists(InjectorPath))
                 {
                     DirectoryPath = System.IO.Path.GetDirectoryName(DirectoryPath);
@@ -671,8 +513,8 @@ namespace Loader
                         return;
                     }
 
-                    InjectorPath = System.IO.Path.Combine(DirectoryPath, "Injector.dll");
-                    InjectorConfigPath = System.IO.Path.Combine(DirectoryPath, "Injector.config");
+                    InjectorPath = System.IO.Path.Combine(DirectoryPath!, "Injector.dll");
+                    InjectorConfigPath = System.IO.Path.Combine(DirectoryPath!, "Injector.config");
                 }
 
                 byte[] InjectorPathBuffer = System.Text.Encoding.Unicode.GetBytes(InjectorPath + "\0");
@@ -829,14 +671,14 @@ namespace Loader
             //ContinualUpdateTimer.Enabled = ShouldRunContinualUpdate();
         }
 
-        private void OnServerRefreshTimer(object sender, EventArgs e)
+        private async void OnServerRefreshTimer(object sender, EventArgs e)
         {
-            QueryServers();
+            await QueryServersAsync(_queryServerCts?.Token ?? CancellationToken.None);
         }
 
-        private void OnRefreshClicked(object sender, EventArgs e)
+        private async void OnRefreshClicked(object sender, EventArgs e)
         {
-            QueryServers();
+            await QueryServersAsync(_queryServerCts?.Token ?? CancellationToken.None);
         }
 
         private void OnClickGithubLink(object sender, LinkLabelLinkClickedEventArgs e)
@@ -870,7 +712,11 @@ namespace Loader
 
         private void OnColumnClicked(object sender, ColumnClickEventArgs e)
         {
-            ServerListSorter Sorter = ImportedServerListView.ListViewItemSorter as ServerListSorter;
+            ServerListSorter? Sorter = ImportedServerListView.ListViewItemSorter as ServerListSorter;
+            if (Sorter == null)
+            {
+                return;
+            }
             if (Sorter.SortColumn != e.Column)
             {
                 if (Sorter.SortColumn != -1)
@@ -907,6 +753,7 @@ namespace Loader
         private void GameTabControl_SelectedIndexChanged(object sender, EventArgs e)
         {
             ApplyTabSettings();
+            serverManager.CurrentGameType = CurrentGameType;
             ValidateUI();
             BuildServerList();
         }
@@ -923,14 +770,14 @@ namespace Loader
             {
                 case GameType.DarkSouls3:
                 {
-                    ExeLocationTextBox.Text = ProgramSettings.Default.ds3_exe_location;
-                    ExePathLabel.Text = resources.GetString("ds3_location");
+                    ExeLocationTextBox!.Text = ProgramSettings.Default.ds3_exe_location;
+                    ExePathLabel!.Text = resources.GetString("ds3_location");
                     break;
                 }
                 case GameType.DarkSouls2:
                 {
-                    ExeLocationTextBox.Text = ProgramSettings.Default.ds2_exe_location;
-                    ExePathLabel.Text = resources.GetString("ds2_location");
+                    ExeLocationTextBox!.Text = ProgramSettings.Default.ds2_exe_location;
+                    ExePathLabel!.Text = resources.GetString("ds2_location");
                     break;
                 }
             }
@@ -942,10 +789,10 @@ namespace Loader
         public int SortColumn = 1;
         public int SortOrder = 0; // 0="Smart" Order, 1=Ascending, 2=Descending
 
-        public int Compare(object x, object y)
+        public int Compare(object? x, object? y)
         {
-            ServerConfig a = (x as ListViewItem).Tag as ServerConfig;
-            ServerConfig b = (y as ListViewItem).Tag as ServerConfig;
+            ServerConfig? a = (x as ListViewItem)?.Tag as ServerConfig;
+            ServerConfig? b = (y as ListViewItem)?.Tag as ServerConfig;
 
             if (a == null || b == null)
             {

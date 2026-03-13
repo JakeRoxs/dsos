@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Net.Http;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -36,9 +37,10 @@ namespace Loader
             { 
                 if (GetPublicAddress)
                 {
-                    using (WebClient client = new WebClient())
+                    using (HttpClient client = new HttpClient())
                     {
-                        return client.DownloadString("http://api.ipify.org");
+                        // synchronous call for simplicity
+                        return client.GetStringAsync("http://api.ipify.org").GetAwaiter().GetResult();
                     }
                 }
                 else

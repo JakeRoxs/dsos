@@ -6,6 +6,7 @@
  * You should have received a copy of the license along with this program. 
  * If not, see <https://opensource.org/licenses/MIT>.
  */
+#nullable enable
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -14,14 +15,17 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using Microsoft.Win32;
+using System.Runtime.Versioning;
 
 namespace Loader
 {
+    [SupportedOSPlatform("windows")]
     public static class SteamUtils
     {
         public static string GetGameInstallPath(string FolderName)
         {
-            string SteamPath = (string)Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam", "SteamPath", "");
+            object? rawPath = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam", "SteamPath", "");
+            string SteamPath = rawPath as string ?? string.Empty;
             if (string.IsNullOrEmpty(SteamPath))
             {
                 return "";

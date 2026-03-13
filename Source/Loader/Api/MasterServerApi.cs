@@ -16,7 +16,6 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 
 namespace Loader
@@ -27,23 +26,23 @@ namespace Loader
 
         private class BaseResponse
         {
-            public string Status { get; set; }
-            public string Message { get; set; }
+            public string Status { get; set; } = string.Empty;
+            public string Message { get; set; } = string.Empty;
         }
 
         private class ListServersResponse : BaseResponse
         {
-            public List<ServerConfig> Servers { get; set; }
+            public List<ServerConfig> Servers { get; set; } = new List<ServerConfig>();
         }
 
         private class GetPublicKeyRequest : BaseResponse
         {
-            public string Password { get; set; }
+            public string Password { get; set; } = string.Empty;
         }
 
         private class GetPublicKeyResponse : BaseResponse
         {
-            public string PublicKey { get; set; }
+            public string PublicKey { get; set; } = string.Empty;
         }
 
         static MasterServerApi()

@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "0+pgMy1usxc=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Jake\\source\\repos\\ds3os\\Source\\Loader.Tests\\Loader.Tests.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Jake\\.nuget\\packages\\mstest.testadapter\\3.0.2\\mstest.testadapter.3.0.2.nupkg.sha512",
+    "C:\\Users\\Jake\\.nuget\\packages\\mstest.testframework\\3.0.2\\mstest.testframework.3.0.2.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -12,10 +13,10 @@ namespace Loader.Forms
 {
     public partial class CreateServerDialog : Form
     {
-        private List<ServerConfig> ActiveServers;
-        private Task CreateServerTask = null;
+        private List<ServerConfig>? ActiveServers;
+        private Task? CreateServerTask = null;
         private string MachinePublicIp = "";
-        private MainForm ParentInstance;
+        private MainForm? ParentInstance;
         private GameType ServerGameType;
 
         public CreateServerDialog(List<ServerConfig> InActiveServers, string InPublicIp, MainForm InParentInstance, GameType InGameType)
@@ -36,9 +37,9 @@ namespace Loader.Forms
             usernameTextBox.Enabled = false;
             passwordTextBox.Enabled = false;
 
-            ServerConfig ShardServer = null;
+            ServerConfig? ShardServer = null;
 
-            foreach (ServerConfig Config in ActiveServers)
+            foreach (ServerConfig Config in ActiveServers ?? new List<ServerConfig>())
             {
                 if (Config.AllowSharding && Config.WebAddress != "" && Config.GameType == ServerGameType.ToString())
                 {
@@ -90,7 +91,7 @@ namespace Loader.Forms
             }
             else
             {
-                ParentInstance.Invoke((MethodInvoker)delegate {
+                ParentInstance!.Invoke((MethodInvoker)delegate {
                     ServerLoginDetailsDialog dialog = new ServerLoginDetailsDialog(Result.webUsername, Result.webPassword, Result.webUrl);
                     dialog.Owner = ParentInstance;
                     dialog.ShowDialog(ParentInstance);

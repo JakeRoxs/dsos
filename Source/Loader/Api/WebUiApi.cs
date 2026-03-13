@@ -16,7 +16,6 @@ using System.Threading.Tasks;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using System.Security.Cryptography;
 
@@ -32,18 +31,18 @@ namespace Loader
         
         private class CreateServerRequest : BaseResponse
         {
-            public string serverName { get; set; }
-            public string serverPassword { get; set; }
-            public string serverGameType { get; set; }
-            public string machineId { get; set; }
+            public string serverName { get; set; } = string.Empty;
+            public string serverPassword { get; set; } = string.Empty;
+            public string serverGameType { get; set; } = string.Empty;
+            public string machineId { get; set; } = string.Empty;
         }
 
         public class CreateServerResponse : BaseResponse
         {
-            public string id { get; set; }
-            public string webUsername { get; set; }
-            public string webPassword { get; set; }
-            public string webUrl { get; set; }
+            public string id { get; set; } = string.Empty;
+            public string webUsername { get; set; } = string.Empty;
+            public string webPassword { get; set; } = string.Empty;
+            public string webUrl { get; set; } = string.Empty;
         }
 
         static WebUiApi()

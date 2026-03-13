@@ -37,7 +37,7 @@ namespace Loader {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://ds3os-master.timleonard.uk:50020")]
+        [global::System.Configuration.DefaultSettingValueAttribute("https://dsos.jakesws.xyz")]
         public string master_server_url {
             get {
                 return ((string)(this["master_server_url"]));

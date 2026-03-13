@@ -199,6 +199,24 @@ Be careful turning this off.
   <data name="UseSeperateSavesCheckbox.Location" type="System.Drawing.Point, System.Drawing">
     <value>41, 43</value>
   </data>
+  <data name="MasterServerUrlLabel.Location" type="System.Drawing.Point, System.Drawing">
+    <value>41, 10</value>
+  </data>
+  <data name="MasterServerUrlLabel.Size" type="System.Drawing.Size, System.Drawing">
+    <value>150, 23</value>
+  </data>
+  <data name="MasterServerUrlLabel.Text" xml:space="preserve">
+    <value>Master server URL:</value>
+  </data>
+  <data name="MasterServerUrlTextBox.Location" type="System.Drawing.Point, System.Drawing">
+    <value>200, 10</value>
+  </data>
+  <data name="MasterServerUrlTextBox.Size" type="System.Drawing.Size, System.Drawing">
+    <value>540, 23</value>
+  </data>
+  <data name="MasterServerUrlTextBox.TabIndex" type="System.Int32, mscorlib">
+    <value>3</value>
+  </data>
   <data name="&gt;&gt;label1.ZOrder" xml:space="preserve">
     <value>1</value>
   </data>

@@ -170,13 +170,13 @@ bool Server::Init()
     // Patch old server ip.
 #ifdef _DEBUG
     //Config.MasterServerIp = "127.0.0.1";
-    Config.MasterServerIp = "ds3os-master.timleonard.uk";
+    Config.MasterServerIp = "dsos.jakesws.xyz";
     //Config.ServerName = "Debugging Server";
     //Config.ServerDescription = "Used for debugging by Infini, don't use.";
 #else
-    if (Config.MasterServerIp == "timleonard.uk")
+    if (Config.MasterServerIp == "jakesws.xyz")
     {
-        Config.MasterServerIp = "ds3os-master.timleonard.uk";
+        Config.MasterServerIp = "dsos.jakesws.xyz";
     }
 #endif
 

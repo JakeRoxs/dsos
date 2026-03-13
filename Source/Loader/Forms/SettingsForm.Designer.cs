@@ -29,10 +29,23 @@
         private void InitializeComponent()
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SettingsForm));
+            MasterServerUrlLabel = new System.Windows.Forms.Label();
+            MasterServerUrlTextBox = new System.Windows.Forms.TextBox();
             UseSeperateSavesCheckbox = new System.Windows.Forms.CheckBox();
             label1 = new System.Windows.Forms.Label();
             CopySavesButton = new System.Windows.Forms.Button();
             SuspendLayout();
+            // 
+            // MasterServerUrlLabel
+            // 
+            resources.ApplyResources(MasterServerUrlLabel, "MasterServerUrlLabel");
+            MasterServerUrlLabel.Name = "MasterServerUrlLabel";
+            // 
+            // MasterServerUrlTextBox
+            // 
+            resources.ApplyResources(MasterServerUrlTextBox, "MasterServerUrlTextBox");
+            MasterServerUrlTextBox.Name = "MasterServerUrlTextBox";
+            MasterServerUrlTextBox.TextChanged += SettingChanged;
             // 
             // UseSeperateSavesCheckbox
             // 
@@ -60,6 +73,8 @@
             Controls.Add(CopySavesButton);
             Controls.Add(label1);
             Controls.Add(UseSeperateSavesCheckbox);
+            Controls.Add(MasterServerUrlTextBox);
+            Controls.Add(MasterServerUrlLabel);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
             Name = "SettingsForm";
             ShowInTaskbar = false;
@@ -70,6 +85,8 @@
 
         #endregion
 
+        private System.Windows.Forms.Label MasterServerUrlLabel;
+        private System.Windows.Forms.TextBox MasterServerUrlTextBox;
         private System.Windows.Forms.CheckBox UseSeperateSavesCheckbox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button CopySavesButton;

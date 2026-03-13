@@ -48,28 +48,28 @@ namespace Loader
     [Serializable]
     public class ServerConfig
     {
-        public string Id                    { get; set; }
-        public string Name                  { get; set; }
-        public string Description           { get; set; }
+        public string Id                    { get; set; } = string.Empty;
+        public string Name                  { get; set; } = string.Empty;
+        public string Description           { get; set; } = string.Empty;
         public int Port                     { get; set; }
-        public string Hostname              { get; set; }
-        public string PrivateHostname       { get; set; }
-        public string PublicKey             { get; set; }
+        public string Hostname              { get; set; } = string.Empty;
+        public string PrivateHostname       { get; set; } = string.Empty;
+        public string PublicKey             { get; set; } = string.Empty;
         public bool ManualImport            { get; set; }
 
         // These attributes are only set if retrieved from master server.
-        public string IpAddress             { get; set; }
+        public string IpAddress             { get; set; } = string.Empty;
         public int PlayerCount              { get; set; }
         public bool PasswordRequired        { get; set; }
-        public string ModsWhiteList         { get; set; }
-        public string ModsBlackList         { get; set; }
-        public string ModsRequiredList      { get; set; }
+        public string ModsWhiteList         { get; set; } = string.Empty;
+        public string ModsBlackList         { get; set; } = string.Empty;
+        public string ModsRequiredList      { get; set; } = string.Empty;
 
         public bool AllowSharding           { get; set; }
-        public string WebAddress            { get; set; }
+        public string WebAddress            { get; set; } = string.Empty;
         
         public bool IsShard                 { get; set; }
-        public string GameType              { get; set; }
+        public string GameType              { get; set; } = string.Empty;
 
         public void CopyTransientPropsFrom(ServerConfig Source)
         {
@@ -98,7 +98,7 @@ namespace Loader
         {
             try
             {
-                config = JsonSerializer.Deserialize<ServerConfig>(json);
+                config = JsonSerializer.Deserialize<ServerConfig>(json) ?? new ServerConfig();
                 config.ManualImport = true;
                 return true;
             }

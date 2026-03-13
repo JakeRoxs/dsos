@@ -2,9 +2,10 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net5.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+    <RollForward>LatestMinor</RollForward>
     <ApplicationIcon>icon.ico</ApplicationIcon>
     <PackageId>Dark Souls III - Open Server Launcher</PackageId>
     <Product>Dark Souls III - Open Server Launcher</Product>

@@ -25,6 +25,7 @@ namespace Loader
         {
             DoNotSaveSettings = true;
             UseSeperateSavesCheckbox.Checked = ProgramSettings.Default.use_seperate_saves;
+            MasterServerUrlTextBox.Text = ProgramSettings.Default.master_server_url;
             DoNotSaveSettings = false;
 
             UpdateState();
@@ -84,6 +85,7 @@ namespace Loader
             }
 
             ProgramSettings.Default.use_seperate_saves = UseSeperateSavesCheckbox.Checked;
+            ProgramSettings.Default.master_server_url = MasterServerUrlTextBox.Text;
             ProgramSettings.Default.Save();
 
             UpdateState();

@@ -33,4 +33,6 @@ set_property(TARGET Loader PROPERTY
     VS_GLOBAL_RestorePackagesOnBuild true
 )
 
+
+
 util_setup_folder_structure(Loader SOURCES "DS3OS")

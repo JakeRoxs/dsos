@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -12,8 +13,8 @@ namespace Loader.Forms
 {
     public partial class PasswordDialog : Form
     {
-        private ServerConfig Config;
-        private Task GetPublicKeyTask = null;
+        private ServerConfig? Config;
+        private Task? GetPublicKeyTask = null;
 
         public PasswordDialog(ServerConfig InConfig)
         {
@@ -31,7 +32,7 @@ namespace Loader.Forms
 
             GetPublicKeyTask = Task.Run(() =>
             {
-                string PublicKey = MasterServerApi.GetPublicKey(Config.Id, Password);
+                string PublicKey = MasterServerApi.GetPublicKey(Config!.Id, Password);
                 this.Invoke((MethodInvoker)delegate {
                     ProcessPublicKey(PublicKey);
                 });
@@ -44,7 +45,7 @@ namespace Loader.Forms
             {
                 MessageBox.Show(resources.GetString("failed_to_retrieve_keys"), resources.GetString("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            Config.PublicKey = Key;
+            Config!.PublicKey = Key;
             GetPublicKeyTask = null;
 
             DialogResult = DialogResult.OK;

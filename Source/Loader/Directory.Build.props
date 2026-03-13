@@ -1,6 +1,17 @@
 ﻿<Project>
   <PropertyGroup>
-    <BaseIntermediateOutputPath>$(SolutionDir)\..\..\Intermediate\$(Platform)_$(Configuration)\</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(SolutionDir)\..\..\Bin\$(Platform)_$(Configuration)\</BaseOutputPath>
+    <!--
+      Resolve repository root independent of whether a solution file is being
+      used.  ``$(SolutionDir)`` is only defined when building from a .sln; the
+      dotnet CLI builds individual projects directly and leaves it empty, which
+      previously caused the output path to collapse into the drive root
+      (hence "C:\Bin\_Debug").  Fall back to the project directory when
+      SolutionDir is missing.
+    -->
+    <RepoRoot Condition="'$(SolutionDir)' == ''">$(MSBuildProjectDirectory)\..\..</RepoRoot>
+    <RepoRoot Condition="'$(SolutionDir)' != ''">$(SolutionDir)\..</RepoRoot>
+
+    <BaseIntermediateOutputPath>$(RepoRoot)\Intermediate\$(Platform)_$(Configuration)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(RepoRoot)\Bin\$(Platform)_$(Configuration)\</BaseOutputPath>
   </PropertyGroup>
 </Project>
