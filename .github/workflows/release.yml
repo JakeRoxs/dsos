@@ -176,7 +176,9 @@ jobs:
         file: ${{ matrix.image.file }}
         push: true
         tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image.tag }}
-        no-cache: ${{ matrix.image.tag != 'ds3os-master:latest' }}
+        # Enable BuildKit cache storage between workflow runs
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
                                   
   make-release:
     name: Make Release
