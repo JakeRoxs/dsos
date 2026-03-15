@@ -8,42 +8,48 @@
  */
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 
-const config = require("../../../config/config.json")
-// Allow overriding the expiration timeout via environment variable.
-const serverTimeoutMs = (() => {
-    const env = process.env.MASTER_SERVER_TIMEOUT_MS;
-    if (env)
-    {
-        const parsed = parseInt(env, 10);
-        if (!Number.isNaN(parsed) && parsed > 0)
-        {
-            return parsed;
-        }
-        console.warn(`Invalid MASTER_SERVER_TIMEOUT_MS=\"${env}\"; falling back to config.server_timeout_ms=${config.server_timeout_ms}`);
-    }
+const config = require("../../../config");
+const { formatDuration, getClientIp, sendError, requireField } = require("../../../utils/helpers");
 
-    return config.server_timeout_ms;
-})();
+const serverTimeoutMs = config.serverTimeoutMs;
 
-var GActiveServers = [];
+const activeServers = new Map();
+let lastCleanupTime = 0;
+let isPruning = false;
+const CLEANUP_INTERVAL_MS = 15_000; // avoid running cleanup too frequently
+
+const statusLimiter = rateLimit({
+	windowMs: 60_000,
+	max: 60,
+	standardHeaders: true,
+	legacyHeaders: false,
+});
+
+const writeLimiter = rateLimit({
+	windowMs: 60_000,
+	max: 20,
+	standardHeaders: true,
+	legacyHeaders: false,
+});
 
 // Use lowercase patterns only.
 
 // Filter list will block servers showing up in the loader.
-var GFilters = [
+const filters = [
     
 ];
 
 // Censor list will replace name and description of server with a censored message.
-var GCensors = [ 
+const censors = [ 
 
 ];
 
 // List of public hostnames that are allowed to mark their servers as supporting sharding.
 // This can be overridden via the SHARDING_ALLOWLIST environment variable (comma-separated).
-var ShardingAllowList = (function()
+const shardingAllowList = (function()
 {
     const defaults = [
         "172.105.11.166"
@@ -67,14 +73,14 @@ var ShardingAllowList = (function()
     return list;
 })();
 
-var GOldestSupportedVersion = 2;
+const oldestSupportedVersion = 2;
 
-function IsFiltered(Name)
+function isFiltered(name)
 {
-    var NameLower = Name.toLowerCase();
-    for (var i = 0; i < GFilters.length; i++)
+    const nameLower = String(name).toLowerCase();
+    for (let i = 0; i < filters.length; i++)
     {
-        if (NameLower.includes(GFilters[i]))
+        if (nameLower.includes(filters[i]))
         {
             return true;
         }
@@ -83,12 +89,12 @@ function IsFiltered(Name)
     return false;
 }
 
-function IsCensored(Name)
+function isCensored(name)
 {
-    var NameLower = Name.toLowerCase();
-    for (var i = 0; i < GCensors.length; i++)
+    const nameLower = String(name).toLowerCase();
+    for (let i = 0; i < censors.length; i++)
     {
-        if (NameLower.includes(GCensors[i]))
+        if (nameLower.includes(censors[i]))
         {
             return true;
         }
@@ -97,31 +103,31 @@ function IsCensored(Name)
     return false;
 }
 
-function IsServerFilter(ServerInfo)
+function isServerFilter(serverInfo)
 {
-    if (ServerInfo['Version'] < GOldestSupportedVersion) 
+    if ((serverInfo?.Version ?? 0) < oldestSupportedVersion)
     {
         return true;
     }
 
-    return  IsFiltered(ServerInfo['Name']) || 
-            IsFiltered(ServerInfo['Description']) || 
-            IsFiltered(ServerInfo['Hostname']);
+    return  isFiltered(serverInfo.Name) || 
+            isFiltered(serverInfo.Description) || 
+            isFiltered(serverInfo.Hostname);
 }
 
-function IsServerCensored(ServerInfo)
+function isServerCensored(serverInfo)
 {
-    return  IsCensored(ServerInfo['Name']) || 
-            IsCensored(ServerInfo['Description']) || 
-            IsCensored(ServerInfo['Hostname']);
+    return  isCensored(serverInfo.Name) || 
+            isCensored(serverInfo.Description) || 
+            isCensored(serverInfo.Hostname);
 }
 
-function IsServerAllowedToShard(ServerInfo)
+function isServerAllowedToShard(serverInfo)
 {
-    var NameLower = ServerInfo['Hostname'].toLowerCase();
-    for (var i = 0; i < ShardingAllowList.length; i++)
+    const hostnameLower = String(serverInfo?.Hostname ?? '').toLowerCase();
+    for (let i = 0; i < shardingAllowList.length; i++)
     {
-        if (NameLower == ShardingAllowList[i])
+        if (hostnameLower === shardingAllowList[i])
         {
             return true;
         }
@@ -130,102 +136,87 @@ function IsServerAllowedToShard(ServerInfo)
     return false;
 }
 
-function RemoveServer(Id)
+function removeServer(id)
 {
-    for (var i = 0; i < GActiveServers.length; i++)
-    {
-        if (GActiveServers[i].Id == Id)
-        {
-            GActiveServers.splice(i, 1);
-            break;
-        }
-    }
+    activeServers.delete(id);
 }
 
-function AddServer(Id, IpAddress, hostname, private_hostname, description, name, public_key, player_count, password, mods_white_list, mods_black_list, mods_required_list, version, allow_sharding, web_address, port, is_shard, game_type)
+function addServer(id, ipAddress, hostname, privateHostname, description, name, publicKey, playerCount, password, modsWhiteList, modsBlackList, modsRequiredList, version, allowSharding, webAddress, port, isShard, gameType)
 {
-    var ServerObj = {
-        "Id": Id,
-        "IpAddress": IpAddress,
+    const serverObj = {
+        "Id": id,
+        "IpAddress": ipAddress,
         "Port": port,
         "Hostname": hostname,
-        "PrivateHostname": private_hostname,
+        "PrivateHostname": privateHostname,
         "Description": description,
         "Name": name,
-        "PublicKey": public_key,
-        "PlayerCount": player_count,
+        "PublicKey": publicKey,
+        "PlayerCount": playerCount,
         "Password": password,
-        "ModsWhiteList": mods_white_list,
-        "ModsBlackList": mods_black_list,
-        "ModsRequiredList": mods_required_list,
-        "AllowSharding": allow_sharding,
-        "IsShard": is_shard,
-        "GameType": game_type,
-        "WebAddress": web_address,
+        "ModsWhiteList": modsWhiteList,
+        "ModsBlackList": modsBlackList,
+        "ModsRequiredList": modsRequiredList,
+        "AllowSharding": allowSharding,
+        "IsShard": isShard,
+        "GameType": gameType,
+        "WebAddress": webAddress,
         "UpdatedTime": Date.now(),
         "Version": version,
         "Censored": false
     };
 
-    if (!IsServerAllowedToShard(ServerObj) && allow_sharding)
+    if (!isServerAllowedToShard(serverObj) && allowSharding)
     {
-        console.log(`Dropped server, marked to allow sharding but not whitelisted: id=${Id} ip=${IpAddress} port=${port} type=${game_type} name=${name}`);
+        console.log(`Dropped server, marked to allow sharding but not whitelisted: id=${id} ip=${ipAddress} port=${port} type=${gameType} name=${name}`);
         return;
     }
 
-    if (allow_sharding)
+    if (allowSharding)
     {
-        console.log(`Sharding enabled & allowed for server: id=${Id} hostname=${hostname} ip=${IpAddress} port=${port} type=${game_type} name=${name}`);
+        console.log(`Sharding enabled & allowed for server: id=${id} hostname=${hostname} ip=${ipAddress} port=${port} type=${gameType} name=${name}`);
     }
 
-    if (IsServerFilter(ServerObj))
+    if (isServerFilter(serverObj))
     {
         return;
     }
 
-    if (IsServerCensored(ServerObj))
+    if (isServerCensored(serverObj))
     {
-        ServerObj["Censored"] = true;
+        serverObj["Censored"] = true;
     }
 
-    for (var i = 0; i < GActiveServers.length; i++)
+    if (activeServers.has(id))
     {
-        if (GActiveServers[i].Id == Id)
-        {
-            GActiveServers[i] = ServerObj;
-            return;
-        }
+        activeServers.set(id, serverObj);
+        return;
     }
 
-    GActiveServers.push(ServerObj);
-    
-    console.log(`Adding server: id=${Id} ip=${IpAddress} port=${port} type=${game_type} name=${name}`);
-    console.log(`Total servers is now ${GActiveServers.length}`);
+    activeServers.set(id, serverObj);
+
+    console.log(`Adding server: id=${id} ip=${ipAddress} port=${port} type=${gameType} name=${name}`);
+    console.log(`Total servers is now ${activeServers.size}`);
 }
 
-function RemoveTimedOutServers()
+function removeTimedOutServers()
 {
-    var TimeoutOccured = false;
-    var TimeoutDate = new Date(Date.now() - serverTimeoutMs);
-    for (var i = 0; i < GActiveServers.length; )
-    {
-        if (GActiveServers[i].UpdatedTime < TimeoutDate)
-        {
-            console.log(`Removing server that timed out: ip=${GActiveServers[i].IpAddress}`);
+    let timeoutOccurred = false;
+    const timeoutThreshold = Date.now() - serverTimeoutMs;
 
-            GActiveServers.splice(i, 1);
-            TimeoutOccured = true;
-            break;
-        }
-        else
+    for (const [id, server] of activeServers.entries())
+    {
+        if (server.UpdatedTime < timeoutThreshold)
         {
-            i++;
+            console.log(`Removing server that timed out: id=${id} ip=${server.IpAddress}`);
+            activeServers.delete(id);
+            timeoutOccurred = true;
         }
     }
 
-    if (TimeoutOccured)
+    if (timeoutOccurred)
     {
-        console.log(`Total servers is now ${GActiveServers.length}`);
+        console.log(`Total servers is now ${activeServers.size}`);
     }
 }
 
@@ -233,158 +224,127 @@ function RemoveTimedOutServers()
 // @description Get a list of all active servers.
 // @access Public
 router.get('/', async (req, res) => {
-    RemoveTimedOutServers();
+    removeTimedOutServers();
 
-    var ServerInfo = [];    
-    for (var i = 0; i < GActiveServers.length; i++)
-    {    
-        var Server = GActiveServers[i];
-        var DisplayName = Server["Name"];
-        var DisplayDescription = Server["Description"];
+    const serverInfo = [];
+    for (const server of activeServers.values())
+    {
+        let displayName = server["Name"];
+        let displayDescription = server["Description"];
 
-        if (Server.Censored)
+        if (server.Censored)
         {
-            DisplayName = "[Censored]";
-            DisplayDescription = "Censored by DS3OS, ask on discord to reinstate name/description.";
+            displayName = "[Censored]";
+            displayDescription = "Censored";
+            
         }
 
-        ServerInfo.push({
-            "Id": Server["Id"],
-            "IpAddress": Server["IpAddress"],
-            "Port": Server["Port"],
-            "Hostname": Server["Hostname"],
-            "PrivateHostname": Server["PrivateHostname"],
-            "Description": DisplayDescription,
-            "Name": DisplayName,
-            "PlayerCount": Server["PlayerCount"],
-            "PasswordRequired": Server["Password"].length > 0,
-            "ModsWhiteList": Server["ModsWhiteList"],
-            "ModsBlackList": Server["ModsBlackList"],
-            "ModsRequiredList": Server["ModsRequiredList"],
-            "AllowSharding": Server["AllowSharding"],
-            "IsShard": Server["IsShard"],
-            "GameType": Server["GameType"],
-            "WebAddress": Server["WebAddress"]
+        serverInfo.push({
+            "Id": server["Id"],
+            "IpAddress": server["IpAddress"],
+            "Port": server["Port"],
+            "Hostname": server["Hostname"],
+            "PrivateHostname": server["PrivateHostname"],
+            "Description": displayDescription,
+            "Name": displayName,
+            "PlayerCount": server["PlayerCount"],
+            "PasswordRequired": server["Password"].length > 0,
+            "ModsWhiteList": server["ModsWhiteList"],
+            "ModsBlackList": server["ModsBlackList"],
+            "ModsRequiredList": server["ModsRequiredList"],
+            "AllowSharding": server["AllowSharding"],
+            "IsShard": server["IsShard"],
+            "GameType": server["GameType"],
+            "WebAddress": server["WebAddress"]
         });
     }
 
-    res.json({ "status":"success", "servers": ServerInfo });
+    res.json({ "status":"success", "servers": serverInfo });
+});
+
+// @route GET api/v1/servers/status
+// @description Get master server status info for dashboards.
+// @access Public
+router.get('/status', statusLimiter, async (req, res) => {
+    res.json({ "status":"success", "statusData": getStatus() });
 });
 
 // @route POST api/v1/servers/:id/public_key
 // @description Get the public key of a given server.
 // @access Public
-router.post('/:id/public_key', async (req, res) => { 
+router.post('/:id/public_key', writeLimiter, async (req, res) => { 
     if (!('password' in req.body))
     {
-        res.json({ "status":"error", "message":"Expected password in body." });
-        return;        
+        return sendError(res, 400, "Expected password in body.");
     }
 
-    var password = req.body["password"];
+    const password = req.body["password"];
 
-    for (var i = 0; i < GActiveServers.length; i++)
+    const server = activeServers.get(req.params.id);
+    if (server)
     {
-        if (GActiveServers[i].Id == req.params.id)
+        if (password === server.Password)
         {
-            if (password == GActiveServers[i].Password)
-            {
-                res.json({ "status":"success", "PublicKey":GActiveServers[i].PublicKey });
-            }
-            else
-            {
-                res.json({ "status":"error", "message":"Password was incorrect." });
-            }
-            return;
+            res.json({ "status":"success", "PublicKey": server.PublicKey });
         }
+        else
+        {
+            return sendError(res, 401, "Password was incorrect.");
+        }
+        return;
     }
 
-    res.json({ "status":"error", "message":"Failed to find server." });
+    return sendError(res, 404, "Failed to find server.");
 });
 
 // @route POST api/v1/servers
 // @description Adds or updates the server registered to the clients ip.
 // @access Public
-router.post('/', async (req, res) => {
-    if (!('Hostname' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected hostname in body." });
-        return;        
-    }
-    if (!('PrivateHostname' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected private hostname in body." });
-        return;        
-    }
-    if (!('Description' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected description in body." });
-        return;        
-    }
-    if (!('Name' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected name in body." });
-        return;        
-    }
-    if (!('PublicKey' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected public_key in body." });
-        return;        
-    }
-    if (!('PlayerCount' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected player_count in body." });
-        return;        
-    }
-    if (!('Password' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected password in body." });
-        return;        
-    }
-    if (!('ModsWhiteList' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected mods_white_list in body." });
-        return;        
-    }
-    if (!('ModsBlackList' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected mods_black_list in body." });
-        return;        
-    }
-    if (!('ModsRequiredList' in req.body))
-    {
-        res.json({ "status":"error", "message":"Expected mods_required_list in body." });
-        return;        
+router.post('/', writeLimiter, async (req, res) => {
+    if (!requireField(req, res, 'Hostname')) return;
+    if (!requireField(req, res, 'PrivateHostname')) return;
+    if (!requireField(req, res, 'Description')) return;
+    if (!requireField(req, res, 'Name')) return;
+    if (!requireField(req, res, 'PublicKey')) return;
+    if (!requireField(req, res, 'PlayerCount')) return;
+    if (!requireField(req, res, 'Password')) return;
+    if (!requireField(req, res, 'ModsWhiteList')) return;
+    if (!requireField(req, res, 'ModsBlackList')) return;
+    if (!requireField(req, res, 'ModsRequiredList')) return;
+
+    const playerCount = parseInt(req.body["PlayerCount"], 10);
+    if (Number.isNaN(playerCount) || playerCount < 0) {
+        return sendError(res, 400, "Invalid player_count");
     }
 
-    var hostname = req.body["Hostname"];
-    var private_hostname = req.body["PrivateHostname"];
-    var description = req.body["Description"];
-    var name = req.body["Name"];
-    var public_key = req.body["PublicKey"];
-    var player_count = parseInt(req.body["PlayerCount"]);
-    var password = req.body["Password"];
-    var mods_white_list = req.body["ModsWhiteList"];
-    var mods_black_list = req.body["ModsBlackList"];
-    var mods_required_list = req.body["ModsRequiredList"];
-    var allow_sharding = false;
-    var is_shard = false;
-    var game_type = "DarkSouls3";
-    var web_address = "";
-    var server_id = req.connection.remoteAddress;
-    var port = 50050;
+    const name = String(req.body["Name"]).slice(0, 128);
+    const description = String(req.body["Description"]).slice(0, 256);
+    const hostname = String(req.body["Hostname"]).slice(0, 128);
+    const privateHostname = String(req.body["PrivateHostname"]).slice(0, 128);
+
+    const publicKey = String(req.body["PublicKey"]);
+    const password = String(req.body["Password"]);
+    const modsWhiteList = req.body["ModsWhiteList"];
+    const modsBlackList = req.body["ModsBlackList"];
+    const modsRequiredList = req.body["ModsRequiredList"];
+    let allowSharding = false;
+    let isShard = false;
+    let gameType = "DarkSouls3";
+    let webAddress = "";
+    let serverId = getClientIp(req);
+    let port = 50050;
 
     if ('AllowSharding' in req.body)
     {
-        allow_sharding = (req.body["AllowSharding"] == "1" || req.body["AllowSharding"] == "true");
+        allowSharding = (req.body["AllowSharding"] == "1" || req.body["AllowSharding"] == "true");
     }
     if ('WebAddress' in req.body)
     {
-        web_address = req.body["WebAddress"];
+        webAddress = req.body["WebAddress"];
     }
     if ('ServerId' in req.body)
     {
-        server_id = req.body["ServerId"];
+        serverId = req.body["ServerId"];
     }
     if ('Port' in req.body)
     {
@@ -392,33 +352,85 @@ router.post('/', async (req, res) => {
     }
     if ('IsShard' in req.body)
     {
-        is_shard = (req.body["IsShard"] == "1" || req.body["IsShard"] == "true");
+        isShard = (req.body["IsShard"] == "1" || req.body["IsShard"] == "true");
     }
     if ('GameType' in req.body)
     {
-        game_type = req.body["GameType"];
+        gameType = req.body["GameType"];
     }
 
-    var version = ('ServerVersion' in req.body) ? parseInt(req.body['ServerVersion']) : 1;
+    const version = ('ServerVersion' in req.body) ? parseInt(req.body['ServerVersion']) : 1;
 
-    AddServer(server_id, req.connection.remoteAddress, hostname, private_hostname, description, name, public_key, player_count, password, mods_white_list, mods_black_list, mods_required_list, version, allow_sharding, web_address, port, is_shard, game_type);
-    
+    addServer(
+        serverId,
+        getClientIp(req),
+        hostname,
+        privateHostname,
+        description,
+        name,
+        publicKey,
+        playerCount,
+        password,
+        modsWhiteList,
+        modsBlackList,
+        modsRequiredList,
+        version,
+        allowSharding,
+        webAddress,
+        port,
+        isShard,
+        gameType
+    );
+
     res.json({ "status":"success" });
 });
 
 // @route DELETE api/v1/servers
 // @description Delete the server registered to the clients ip.
 // @access Public
-router.delete('/', (req, res) => { 
+router.delete('/', writeLimiter, (req, res) => { 
     
-    var server_id = req.connection.remoteAddress;
+    let serverId = getClientIp(req);
     if ('ServerId' in req.body)
     {
-        server_id = req.body["ServerId"];
+        serverId = req.body["ServerId"];
     }
 
-    RemoveServer(server_id);
+    removeServer(serverId);
     res.json({ "status":"success" });
 });
 
+function pruneStaleServers() {
+	if (isPruning) {
+		return;
+	}
+
+	const now = Date.now();
+	if (now - lastCleanupTime < CLEANUP_INTERVAL_MS) {
+		return;
+	}
+
+	isPruning = true;
+	try {
+		lastCleanupTime = now;
+		removeTimedOutServers();
+	} finally {
+		isPruning = false;
+	}
+}
+
+function getStatus() {
+	pruneStaleServers();
+	return {
+		activeServerCount: activeServers.size,
+		serverTimeoutMs: serverTimeoutMs,
+		uptime: formatDuration(process.uptime() * 1000),
+		shardingAllowList: shardingAllowList,
+		filters: filters,
+		censors: censors,
+		oldestSupportedVersion: oldestSupportedVersion
+	};
+}
+
 module.exports = router;
+module.exports.getStatus = getStatus;
