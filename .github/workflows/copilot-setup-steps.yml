@@ -51,6 +51,13 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: msbuild /m /p:Configuration=Release ./intermediate/vs2022/ds3os.sln /t:Restore,Build
 
+      - name: Install uuid development package
+        if: matrix.buildType == 'make'
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
+
       - name: Build (Linux Make)
         if: matrix.buildType == 'make'
         run: |

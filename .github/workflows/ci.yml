@@ -23,19 +23,13 @@ jobs:
         include:
           - name: windows-msbuild
             os: windows-latest
-            buildType: msbuild
-            platform: windows
           - name: linux-make
             os: ubuntu-latest
-            buildType: make
-            platform: linux
           - name: nix-gcc
             os: ubuntu-latest
-            buildType: nix
             nixTarget: .
           - name: nix-clang
             os: ubuntu-latest
-            buildType: nix
             nixTarget: .#clang
     steps:
     - name: Checkout repository
@@ -44,7 +38,7 @@ jobs:
         submodules: recursive
 
     - name: Cache build artifacts
-      if: matrix.buildType == 'msbuild' || matrix.buildType == 'make'
+      if: matrix.name == 'windows-msbuild' || matrix.name == 'linux-make'
       uses: actions/cache@v5
       with:
         path: |
@@ -55,64 +49,64 @@ jobs:
           ${{ runner.os }}-build-
 
     - name: Clean stale CMake cache (Linux)
-      if: matrix.buildType == 'make'
+      if: matrix.name == 'linux-make'
       shell: bash
       run: |
         rm -f intermediate/make/CMakeCache.txt
         rm -rf intermediate/make/CMakeFiles
 
     - name: Clean stale CMake cache (Windows)
-      if: matrix.buildType == 'msbuild'
+      if: matrix.name == 'windows-msbuild'
       shell: cmd
       run: |
         if exist intermediate\vs2022\CMakeCache.txt del /f /q intermediate\vs2022\CMakeCache.txt
         if exist intermediate\vs2022\CMakeFiles rmdir /s /q intermediate\vs2022\CMakeFiles
 
     - name: Generate Solution (Windows)
-      if: matrix.buildType == 'msbuild'
+      if: matrix.name == 'windows-msbuild'
       shell: cmd
       run: |
         cd "%GITHUB_WORKSPACE%\Tools"
         "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
 
     - name: Generate Solution (Linux)
-      if: matrix.buildType == 'make'
+      if: matrix.name == 'linux-make'
       shell: bash
       run: |
         cd "${{ github.workspace }}/Tools"
         "${{ github.workspace }}/Tools/generate_make_release.sh"
 
     - name: Add MSBuild to PATH
-      if: matrix.buildType == 'msbuild'
+      if: matrix.name == 'windows-msbuild'
       uses: microsoft/setup-msbuild@v2
 
     - name: Build on Windows
-      if: matrix.buildType == 'msbuild'
+      if: matrix.name == 'windows-msbuild'
       working-directory: ${{github.workspace}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Restore,Build
 
     - name: Install uuid development package
-      if: matrix.buildType == 'make'
+      if: matrix.name == 'linux-make'
       run: |
         set -euxo pipefail
         sudo apt-get update
         sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
     - name: Build on Linux
-      if: matrix.buildType == 'make'
+      if: matrix.name == 'linux-make'
       working-directory: ${{github.workspace}}/intermediate/make
       run: make -j$(nproc)
 
     - name: Install Nix
-      if: matrix.buildType == 'nix'
+      if: startsWith(matrix.name, 'nix-')
       uses: DeterminateSystems/nix-installer-action@main
 
     - name: Setup nix cache
-      if: matrix.buildType == 'nix'
+      if: startsWith(matrix.name, 'nix-')
       uses: DeterminateSystems/magic-nix-cache-action@main
       with:
         use-flakehub: false
 
     - name: Build with nix
-      if: matrix.buildType == 'nix'
+      if: startsWith(matrix.name, 'nix-')
       run: nix build -L ${{ matrix.nixTarget }}
