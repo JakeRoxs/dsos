@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - development
 
 env:
   # Path to the solution file relative to the root of the project.
@@ -20,10 +21,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-latest
+          - name: windows-msbuild
+            os: windows-latest
+            buildType: msbuild
             platform: windows
-          - os: ubuntu-latest
+          - name: linux-make
+            os: ubuntu-latest
+            buildType: make
             platform: linux
+          - name: nix-gcc
+            os: ubuntu-latest
+            buildType: nix
+            nixTarget: .
+          - name: nix-clang
+            os: ubuntu-latest
+            buildType: nix
+            nixTarget: .#clang
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
@@ -31,6 +44,7 @@ jobs:
         submodules: recursive
 
     - name: Cache build artifacts
+      if: matrix.buildType == 'msbuild' || matrix.buildType == 'make'
       uses: actions/cache@v5
       with:
         path: |
@@ -41,58 +55,50 @@ jobs:
           ${{ runner.os }}-build-
 
     - name: Generate Solution (Windows)
-      if: matrix.platform == 'windows'
+      if: matrix.buildType == 'msbuild'
       shell: cmd
       run: |
         cd "%GITHUB_WORKSPACE%\Tools"
         "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
 
     - name: Generate Solution (Linux)
-      if: matrix.platform == 'linux'
+      if: matrix.buildType == 'make'
       shell: bash
       run: |
         cd "${{ github.workspace }}/Tools"
         "${{ github.workspace }}/Tools/generate_make_release.sh"
 
     - name: Add MSBuild to PATH
-      if: matrix.platform == 'windows'
+      if: matrix.buildType == 'msbuild'
       uses: microsoft/setup-msbuild@v2
 
     - name: Build on Windows
-      if: matrix.platform == 'windows'
+      if: matrix.buildType == 'msbuild'
       working-directory: ${{github.workspace}}
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Restore,Build
 
     - name: Install uuid development package
-      if: matrix.platform == 'linux'
+      if: matrix.buildType == 'make'
       run: |
         set -euxo pipefail
         sudo apt-get update
         sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
     - name: Build on Linux
-      if: matrix.platform == 'linux'
+      if: matrix.buildType == 'make'
       working-directory: ${{github.workspace}}/intermediate/make
       run: make -j$(nproc)
 
-  build-nix-gcc:
-    name: Build nix w/ gcc
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-    - uses: DeterminateSystems/nix-installer-action@main
-    - uses: DeterminateSystems/magic-nix-cache-action@main
-      with:
-        use-flakehub: false
-    - run: nix build -L .
+    - name: Install Nix
+      if: matrix.buildType == 'nix'
+      uses: DeterminateSystems/nix-installer-action@main
 
-  build-nix-clang:
-    name: Build nix w/ clang
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v6
-    - uses: DeterminateSystems/nix-installer-action@main
-    - uses: DeterminateSystems/magic-nix-cache-action@main
+    - name: Setup nix cache
+      if: matrix.buildType == 'nix'
+      uses: DeterminateSystems/magic-nix-cache-action@main
       with:
         use-flakehub: false
-    - run: nix build -L .#clang
+
+    - name: Build with nix
+      if: matrix.buildType == 'nix'
+      run: nix build -L ${{ matrix.nixTarget }}
