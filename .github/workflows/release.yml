@@ -12,6 +12,9 @@ on:
         required: true
         default: "-preview"
 
+permissions:
+  contents: read
+
 env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: ./intermediate/vs2022/ds3os.sln
@@ -33,7 +36,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
-      packages: read
     strategy:
       matrix:
         include:
@@ -141,7 +143,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     strategy:
       matrix:
         image:

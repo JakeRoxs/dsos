@@ -11,6 +11,9 @@ on:
       - main
       - development
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref_name }}-${{ github.event_name }}
   cancel-in-progress: true

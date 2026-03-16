@@ -22,7 +22,8 @@ bool GetMachineIPv4(NetIPAddress& Output, bool GetPublicAddress)
     {
         NetHttpRequest Request;
         Request.SetMethod(NetHttpMethod::GET);
-        Request.SetUrl("http://api.ipify.org");
+        // Use HTTPS to ensure the public IP lookup is not tampered with in transit.
+        Request.SetUrl("https://api.ipify.org");
         if (Request.Send())
         {
             if (std::shared_ptr<NetHttpResponse> Response = Request.GetResponse(); Response && Response->GetWasSuccess())
@@ -70,7 +71,7 @@ bool GetMachineIPv4(NetIPAddress& Output, bool GetPublicAddress)
             Addr->s_addr & 0xFF,
             (Addr->s_addr >> 8) & 0xFF,
             (Addr->s_addr >> 16) & 0xFF,
-            (Addr->s_addr >> 24) & 0xF
+            (Addr->s_addr >> 24) & 0xFF
         );
 #endif
 
