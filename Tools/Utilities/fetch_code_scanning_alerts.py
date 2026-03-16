@@ -71,8 +71,22 @@ def get_git_origin_repo() -> Optional[tuple[str, str]]:
         return None
 
 
-def run_gh_api(owner: str, repo: str, state: str, per_page: int) -> Any:
-    # Some GitHub endpoints return 404 unless the query string is included directly.
+def run_gh_api(
+    owner: str,
+    repo: str,
+    state: str,
+    per_page: int,
+    check_output_fn: Callable[..., str] | None = None,
+) -> Any:
+    """Run `gh api` against the code-scanning alerts endpoint and return parsed JSON.
+
+    This function uses `--paginate` so it fetches all pages of results, and returns the
+    parsed JSON (typically a list of alerts).
+    """
+
+    if check_output_fn is None:
+        check_output_fn = subprocess.check_output
+
     query = f"?state={state}&per_page={per_page}"
     cmd = [
         "gh",
@@ -80,7 +94,30 @@ def run_gh_api(owner: str, repo: str, state: str, per_page: int) -> Any:
         "-H",
         "Accept: application/vnd.github+json",
         f"/repos/{owner}/{repo}/code-scanning/alerts{query}",
+        "--paginate",
     ]
+
+    try:
+        try:
+            output = check_output_fn(cmd, stderr=subprocess.STDOUT, text=True)
+        except TypeError:
+            # Some injected check_output substitutes may not accept kwargs.
+            output = check_output_fn(cmd)
+    except subprocess.CalledProcessError as e:
+        print(f"ERROR: failed to run gh api: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise SystemExit(1)
+
+    try:
+        payload = json.loads(output)
+        # Some endpoints return {"items": [...]}; normalize to the list.
+        if isinstance(payload, dict) and "items" in payload:
+            return payload["items"]
+        return payload
+    except json.JSONDecodeError as e:
+        print(f"ERROR: failed to parse JSON from gh api output: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise SystemExit(1)
 
 
 def get_last_scan_workflow_run_time(
@@ -113,12 +150,14 @@ def get_last_scan_workflow_run_time(
 
     for workflow_file in workflow_files:
         try:
+            # The GitHub Actions API does not reliably support `conclusion=success` as a query parameter.
+            # Request completed runs and select the first successful one in code.
             cmd = [
                 "gh",
                 "api",
                 "-H",
                 "Accept: application/vnd.github+json",
-                f"/repos/{owner}/{repo}/actions/workflows/{workflow_file}/runs?status=completed&conclusion=success&per_page=1",
+                f"/repos/{owner}/{repo}/actions/workflows/{workflow_file}/runs?status=completed&per_page=50",
             ]
             # Allow injection of a custom check_output-like function for testing.
             # Some callables may not accept `stderr`/`text`, so fall back if needed.
@@ -129,29 +168,45 @@ def get_last_scan_workflow_run_time(
             payload = json.loads(output)
             runs = payload.get("workflow_runs") or []
             if not runs:
-                # No completed, successful runs for this workflow; try the next one.
-                continue
-            latest = runs[0]
-            updated_at = latest.get("updated_at") or latest.get("created_at")
-            if not updated_at:
+                # No completed runs for this workflow; try the next one.
                 continue
 
-            # GitHub timestamps are ISO 8601 with 'Z' (UTC) and may include fractional seconds.
-            # Example: 2024-03-15T18:37:12.345Z
-            try:
-                # datetime.fromisoformat does not accept a trailing 'Z', so normalize it to '+00:00'.
-                if updated_at.endswith("Z"):
-                    updated_at = updated_at[:-1] + "+00:00"
-                dt = datetime.fromisoformat(updated_at)
-                ts = dt.astimezone(timezone.utc).timestamp()
-                if latest_ts is None or ts > latest_ts:
-                    latest_ts = ts
-            except ValueError as e:
-                print(
-                    f"WARNING: failed to parse timestamp from workflow '{workflow_file}' response: {e}",
-                    file=sys.stderr,
-                )
+            # Select the most recent successful run. If no successful runs exist,
+            # fall back to the most recent completed run.
+            def _parse_ts(run: Dict[str, Any]) -> Optional[float]:
+                updated_at = run.get("updated_at") or run.get("created_at")
+                if not updated_at:
+                    return None
+                # GitHub timestamps are ISO 8601 with 'Z' (UTC) and may include fractional seconds.
+                # Example: 2024-03-15T18:37:12.345Z
+                try:
+                    if isinstance(updated_at, str) and updated_at.endswith("Z"):
+                        updated_at = updated_at[:-1] + "+00:00"
+                    dt = datetime.fromisoformat(updated_at)
+                    return dt.astimezone(timezone.utc).timestamp()
+                except ValueError as e:
+                    print(
+                        f"WARNING: failed to parse timestamp from workflow '{workflow_file}' response: {e}",
+                        file=sys.stderr,
+                    )
+                    return None
+
+            parsed_runs = []
+            for run in runs:
+                ts = _parse_ts(run)
+                if ts is not None:
+                    parsed_runs.append((ts, run.get("conclusion"), run))
+
+            if not parsed_runs:
+                # None of the returned runs contained a parseable timestamp.
                 continue
+
+            # Prefer the latest successful run by timestamp.
+            successful_runs = [t for t in parsed_runs if t[1] == "success"]
+            candidate = max(successful_runs or parsed_runs, key=lambda t: t[0])
+            ts = candidate[0]
+            if latest_ts is None or ts > latest_ts:
+                latest_ts = ts
         except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
             print(
                 f"WARNING: failed to query GitHub Actions API for workflow '{workflow_file}': {e}",
@@ -534,13 +589,14 @@ def main(argv: Optional[List[str]] = None) -> int:
             os.makedirs(todo_root, exist_ok=True)
 
             if args.clean:
-                # Remove generated todo files (e.g. 001-pending-*.md). Keep the directory itself.
-                for existing in os.listdir(todo_root):
-                    if existing.endswith(".md") and re.match(r"^\d{3}-", existing):
-                        try:
-                            os.remove(os.path.join(todo_root, existing))
-                        except OSError:
-                            pass
+                # Remove generated todo files (e.g. 001-pending-*.md) recursively.
+                # This matches the same scope used by next_issue_id(), preventing stale todos or issue ID collisions.
+                pattern = os.path.join(todo_root, "**", "[0-9][0-9][0-9]-*.md")
+                for existing in glob.glob(pattern, recursive=True):
+                    try:
+                        os.remove(existing)
+                    except OSError:
+                        pass
 
             issue_id = next_issue_id(todo_root)
             for group_key, alerts in groups.items():
@@ -568,8 +624,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 class GetLastScanWorkflowRunTimeTests(unittest.TestCase):
-    def _make_payload(self, updated_at: str) -> str:
-        return json.dumps({"workflow_runs": [{"updated_at": updated_at}]})
+    def _make_payload(self, updated_at: str, conclusion: str = "success") -> str:
+        return json.dumps({"workflow_runs": [{"updated_at": updated_at, "conclusion": conclusion}]})
 
     def test_returns_timestamp_for_single_workflow(self):
         payload = self._make_payload("2026-03-15T12:00:00Z")
@@ -603,9 +659,32 @@ class GetLastScanWorkflowRunTimeTests(unittest.TestCase):
 
     def test_returns_none_when_no_runs(self):
         ts = get_last_scan_workflow_run_time(
-            "owner", "repo", "codeql.yml", check_output_fn=lambda *args, **kwargs: json.dumps({"workflow_runs": []})
+            "owner",
+            "repo",
+            "codeql.yml",
+            check_output_fn=lambda *args, **kwargs: json.dumps({"workflow_runs": []}),
         )
         self.assertIsNone(ts)
+
+    def test_selects_most_recent_successful_run(self):
+        # A more recent failed run should not override an earlier successful run.
+        payload = json.dumps(
+            {
+                "workflow_runs": [
+                    {"updated_at": "2026-03-15T15:00:00Z", "conclusion": "failure"},
+                    {"updated_at": "2026-03-15T14:00:00Z", "conclusion": "success"},
+                ]
+            }
+        )
+
+        ts = get_last_scan_workflow_run_time(
+            "owner",
+            "repo",
+            "codeql.yml",
+            check_output_fn=lambda *args, **kwargs: payload,
+        )
+        expected = datetime.fromisoformat("2026-03-15T14:00:00+00:00").timestamp()
+        self.assertEqual(ts, expected)
 
     def test_ignores_invalid_timestamp_values(self):
         ts = get_last_scan_workflow_run_time(
@@ -619,5 +698,38 @@ class GetLastScanWorkflowRunTimeTests(unittest.TestCase):
         self.assertIsNone(ts)
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+class AlertGroupingAndTodoRenderingTests(unittest.TestCase):
+    def test_group_alerts_by_severity(self):
+        alerts = [
+            {"rule": {"severity": "error", "name": "R1"}},
+            {"rule": {"severity": "warning", "name": "R2"}},
+            {"rule": {"severity": "error", "name": "R3"}},
+        ]
+        grouped = group_alerts(alerts, group_by="severity")
+        self.assertIn("error", grouped)
+        self.assertIn("warning", grouped)
+        self.assertEqual(len(grouped["error"]), 2)
+        self.assertEqual(len(grouped["warning"]), 1)
+
+    def test_render_todo_body_includes_recommendation_and_uri(self):
+        alerts = [
+            {
+                "number": 42,
+                "html_url": "https://example.com/alert/42",
+                "rule": {
+                    "name": "ExampleRule",
+                    "description": "Example description",
+                    "severity": "warning",
+                    "help": {"text": "Do something"},
+                    "helpUri": "https://example.com/docs",
+                },
+                "most_recent_instance": {
+                    "location": {"path": "Source/Main.cs", "start_line": 10},
+                    "message": {"text": "Example issue"},
+                },
+            }
+        ]
+        body = render_todo_body("100", "ExampleRule", alerts)
+        self.assertIn("**Recommendation:** Do something", body)
+        self.assertIn("**More info:** https://example.com/docs", body)
+        self.assertIn("`Source/Main.cs:10`", body)
