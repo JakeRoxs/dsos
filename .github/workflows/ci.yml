@@ -178,16 +178,24 @@ jobs:
         if: matrix.name == 'windows-msbuild'
         uses: microsoft/setup-msbuild@v2
 
+      - name: Restore NuGet packages (Windows)
+        if: matrix.name == 'windows-msbuild'
+        working-directory: ${{github.workspace}}
+        run: dotnet restore ${{env.SOLUTION_FILE_PATH}}
+
       - name: Build on Windows
         if: matrix.name == 'windows-msbuild'
         working-directory: ${{github.workspace}}
-        run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Restore,Build
+        run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Build
 
-      - name: Install uuid development package
+      - name: Install required development packages (Linux)
         if: matrix.name == 'linux-make'
         run: |
           set -euxo pipefail
           sudo apt-get update
+          # Required for building OpenSSL/curl/zlib/sqlite
+          sudo apt-get install -y libssl-dev zlib1g-dev libsqlite3-dev pkg-config
+          # UUID is used by the project; different distros name it differently.
           sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
       - name: Build on Linux
