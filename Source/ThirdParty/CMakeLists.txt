@@ -50,6 +50,10 @@ else()
             string(REPLACE "cmake_policy(VERSION 3.2.2)" "cmake_policy(VERSION 3.10)" _civ "${_civ}")
             file(WRITE "${civetweb_SOURCE_DIR}/CMakeLists.txt" "${_civ}")
         endif()
+
+        # Disable civetweb unit tests / external project downloads (e.g., check-unit-test-framework).
+        set(CIVETWEB_BUILD_TESTING OFF CACHE BOOL "Disable CivetWeb unit tests" FORCE)
+
         add_subdirectory(${civetweb_SOURCE_DIR} ${civetweb_BINARY_DIR})
     endif()
 endif()
