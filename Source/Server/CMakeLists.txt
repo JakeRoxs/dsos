@@ -100,6 +100,24 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
 
+# Prefer the modern FindSQLite3 target if available, otherwise fall back to the vendored target.
+if(TARGET SQLite::SQLite3)
+    set(DSOS_SQLITE_TARGET SQLite::SQLite3)
+elseif(TARGET sqlite)
+    set(DSOS_SQLITE_TARGET sqlite)
+else()
+    message(FATAL_ERROR "Could not find a SQLite library target (expected \"sqlite\" or \"SQLite::SQLite3\")")
+endif()
+
+# Diagnostic output for CI: show which SQLite target we will link.
+message(STATUS "Using SQLite link target: ${DSOS_SQLITE_TARGET}")
+if(TARGET ${DSOS_SQLITE_TARGET})
+    get_target_property(_DSOS_SQLITE_LOCATION ${DSOS_SQLITE_TARGET} IMPORTED_LOCATION)
+    if(_DSOS_SQLITE_LOCATION)
+        message(STATUS "${DSOS_SQLITE_TARGET} IMPORTED_LOCATION = ${_DSOS_SQLITE_LOCATION}")
+    endif()
+endif()
+
 target_link_libraries(
     ${PROJECT_NAME}
     DarkSouls3
@@ -107,7 +125,7 @@ target_link_libraries(
     Shared
     civetweb
     libprotobuf-lite
-    sqlite
+    ${DSOS_SQLITE_TARGET}
     steam
 )
 
