@@ -305,12 +305,23 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
 target_compile_definitions(${PROJECT_NAME} PUBLIC -DBUILDING_LIBCURL -DCURL_HIDDEN_SYMBOLS -D_USRDLL -DHAVE_CONFIG_H -Dlibcurl_EXPORTS -DCURL_STATICLIB)
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-    .
-    include
-    lib
-    ../openssl/include
-)
-
+if(DSOS_USE_VENDORED_OPENSSL)
+    target_include_directories(${PROJECT_NAME} PUBLIC
+        .
+        include
+        lib
+        ../openssl/include
+    )
+    target_link_libraries(${PROJECT_NAME} PUBLIC openssl)
+else()
+    target_include_directories(${PROJECT_NAME} PUBLIC
+        .
+        include
+        lib
+    )
+    if(TARGET openssl)
+        target_link_libraries(${PROJECT_NAME} PUBLIC openssl)
+    endif()
+endif()
 
 util_setup_folder_structure(${PROJECT_NAME} SOURCES "ThirdParty")

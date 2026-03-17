@@ -33,13 +33,22 @@ cmake_minimum_required( VERSION 3.10 )
 set( CMAKE_DISABLE_SOURCE_CHANGES ON )
 set( CMAKE_DISABLE_IN_SOURCE_BUILD ON )
 
-set( CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" )
+# Allow building OpenSSL from an external source tree (e.g. fetched via FetchContent).
+# Prefer a user-specified source tree if it looks like a valid OpenSSL checkout.
+if(DEFINED DSOS_OPENSSL_SOURCE_DIR AND DSOS_OPENSSL_SOURCE_DIR AND EXISTS "${DSOS_OPENSSL_SOURCE_DIR}/include/openssl/opensslv.h")
+  set(OPENSSL_BASE_DIR "${DSOS_OPENSSL_SOURCE_DIR}")
+else()
+  set(OPENSSL_BASE_DIR "${PROJECT_SOURCE_DIR}")
+endif()
+
+# Always use the vendored CMake helper modules, even if building from an external sources tree.
+set( CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake" )
 
 option( WITH_APPS "Build applications" OFF )
 
 # OpenSSL version detection imported from FindOpenSSL.cmake
 
-file( STRINGS "${PROJECT_SOURCE_DIR}/include/openssl/opensslv.h" openssl_version_str
+file( STRINGS "${OPENSSL_BASE_DIR}/include/openssl/opensslv.h" openssl_version_str
   REGEX "^#[\t ]*define[\t ]+OPENSSL_VERSION_NUMBER[\t ]+0x([0-9a-fA-F])+.*" )
 
 function(from_hex HEX DEC)
@@ -159,11 +168,12 @@ if( MSVC OR ( WIN32 AND MINGW AND NOT CYGWIN ) )
 endif()
 
 # Begin configure public headers
-file( COPY ${PROJECT_SOURCE_DIR}/include/internal DESTINATION include )
-file( COPY ${PROJECT_SOURCE_DIR}/include/crypto DESTINATION include )
-file( COPY ${PROJECT_SOURCE_DIR}/include/openssl DESTINATION include )
+file( COPY ${OPENSSL_BASE_DIR}/include/internal DESTINATION include )
+file( COPY ${OPENSSL_BASE_DIR}/include/crypto DESTINATION include )
+file( COPY ${OPENSSL_BASE_DIR}/include/openssl DESTINATION include )
 
-file( READ ${PROJECT_SOURCE_DIR}/opensslconf.h.cmake CONF )
+# Use the bundled template (not the upstream source tree) for opensslconf generation.
+file( READ ${CMAKE_CURRENT_LIST_DIR}/opensslconf.h.cmake CONF )
 set( CONF "
 #define OPENSSL_NO_MD2
 #define OPENSSL_NO_RC5
@@ -182,7 +192,7 @@ add_subdirectory(ssl)
 if( WITH_APPS AND NOT ANDROID AND NOT IOS )
   add_subdirectory(apps)
 
-  file( READ ${PROJECT_SOURCE_DIR}/c_rehash.cmake C_REHASH )
+file( READ ${OPENSSL_BASE_DIR}/c_rehash.cmake C_REHASH )
   string( REPLACE "@OPENSSLDIR@" "${OPENSSLDIR}" C_REHASH "${C_REHASH}" )
   string( REPLACE "@CMAKE_INSTALL_PREFIX@" "${CMAKE_INSTALL_PREFIX}" C_REHASH "${C_REHASH}" )
   file( WRITE ${PROJECT_BINARY_DIR}/c_rehash "${C_REHASH}" )
