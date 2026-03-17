@@ -223,6 +223,7 @@ else()
         dsos_append_dep_status("sqlite: vendored")
         add_subdirectory(sqlite)
     endif()
+    endif()  # end if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
 endif()
 
 # OpenSSL
