@@ -67,11 +67,13 @@ else()
             if(NOT civetweb_POPULATED)
                 # Older releases of CivetWeb use low cmake_minimum_required values.
                 # Patch their CMakeLists before it is processed.
+            if(POLICY CMP0169)
                 cmake_policy(SET CMP0169 OLD)
-                FetchContent_Populate(civetweb)
+            endif()
+            FetchContent_Populate(civetweb)
+            if(POLICY CMP0169)
                 cmake_policy(SET CMP0169 NEW)
-
-                file(READ "${civetweb_SOURCE_DIR}/CMakeLists.txt" _civ)
+            endif()
                 string(REPLACE "cmake_minimum_required (VERSION 3.3.0)" "cmake_minimum_required (VERSION 3.10)" _civ "${_civ}")
                 string(REPLACE "cmake_policy(VERSION 3.2.2)" "cmake_policy(VERSION 3.10)" _civ "${_civ}")
                 file(WRITE "${civetweb_SOURCE_DIR}/CMakeLists.txt" "${_civ}")
