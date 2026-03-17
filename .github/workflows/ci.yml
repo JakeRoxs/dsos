@@ -45,9 +45,11 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA=${{ github.event.pull_request.base.sha }}
             HEAD_SHA=${{ github.event.pull_request.head.sha }}
+            BRANCH=${{ github.event.pull_request.head.ref }}
           else
             BASE_SHA=${{ github.event.before }}
             HEAD_SHA=${{ github.sha }}
+            BRANCH=${GITHUB_REF_NAME}
           fi
 
           # If there's no valid base commit (new branch / force push), run CI.
@@ -69,6 +71,12 @@ jobs:
 
           real=0
           while IFS= read -r f; do
+            # .nix files are build-relevant for nix-based matrix jobs
+            if [[ "$f" == *.nix ]]; then
+              real=1
+              break
+            fi
+
             case "$f" in
               # Always run CI if we change the CI workflow itself.
               .github/workflows/ci.yml)
@@ -103,12 +111,23 @@ jobs:
           done < <(printf '%s\n' "$CHANGED")
 
           if [ "$real" -eq 0 ]; then
-            echo "::notice::Skipping CI: only docs/workflow files changed."
+            # If the last completed workflow run on this branch failed, re-run CI.
+            # (This ensures we don't silently skip CI if a prior run failed and no build-relevant changes were made.)
+            prev_conclusion=$(curl -sSfL -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs?branch=$BRANCH&event=${{ github.event_name }}&per_page=5" 2>/dev/null | python -c 'import json,sys; runs=json.load(sys.stdin).get("workflow_runs", []); current=int(sys.argv[1]); print(next((r.get("conclusion", "") for r in runs if r.get("id") != current and r.get("status") == "completed"), ""))' "$GITHUB_RUN_ID" 2>/dev/null || true)
+
+            if [ -n "$prev_conclusion" ] && [ "$prev_conclusion" != "success" ]; then
+              echo "::notice::Previous CI run on branch '$BRANCH' concluded as '$prev_conclusion'; running CI."
+              real=1
+            fi
+          fi
+
+          if [ "$real" -eq 0 ]; then
+            echo "::notice::Skipping CI: only docs/workflow files changed and previous run succeeded."
             echo "skipped=true" >> "$GITHUB_OUTPUT"
             echo "::notice::CI decision: skipped=true (no build-relevant changes detected)"
           else
             echo "skipped=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::CI decision: skipped=false (build-relevant changes detected)"
+            echo "::notice::CI decision: skipped=false (build-relevant changes detected or previous run failed)"
           fi
   build:
     name: Build (matrix)
