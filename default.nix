@@ -13,6 +13,8 @@
 {
     stdenv
     , libuuid
+    , sqlite
+    , openssl
 }:
 
 with builtins;
@@ -28,7 +30,7 @@ let
         };
 
         nativeBuildInputs = [ cmake pkg-config removeReferencesTo xz ];
-        buildInputs = [ libuuid sqlite ];
+        buildInputs = [ libuuid sqlite openssl ];
 
         enableParallelBuilding = true;
 
