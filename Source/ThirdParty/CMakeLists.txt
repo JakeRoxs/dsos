@@ -116,29 +116,50 @@ if(DSOS_USE_VENDORED_SQLITE)
     add_subdirectory(sqlite)
 else()
     find_package(SQLite3 QUIET)
+
+    # Some FindSQLite3 implementations can claim success but not define a target.
+    # Try to recover by creating a usable target from either:
+    #  * SQLite::SQLite3 (preferred)
+    #  * SQLite3::SQLite3
+    #  * pkg-config output (sqlite3)
+    if(NOT SQLite3_FOUND)
+        find_package(PkgConfig QUIET)
+        if(PKG_CONFIG_FOUND)
+            pkg_check_modules(_sqlite3_pc sqlite3)
+            if(_sqlite3_pc_FOUND)
+                set(SQLite3_FOUND TRUE)
+                set(SQLite3_LIBRARIES "${_sqlite3_pc_LIBRARIES}")
+                set(SQLite3_INCLUDE_DIRS "${_sqlite3_pc_INCLUDE_DIRS}")
+            endif()
+        endif()
+    endif()
+
     if(SQLite3_FOUND)
-        # FindSQLite3 may define one of several targets depending on CMake version.
-        if(TARGET SQLite::SQLite3)
-            add_library(sqlite ALIAS SQLite::SQLite3)
-        elseif(TARGET SQLite3::SQLite3)
-            add_library(sqlite ALIAS SQLite3::SQLite3)
-        else()
-            # Some FindSQLite3 implementations (or older CMake) only provide variables.
-            # Create a minimal imported target so downstream code can link.
-            if(NOT TARGET SQLite::SQLite3 AND DEFINED SQLite3_LIBRARIES)
+        # Create a consistent, imported target for consumers.
+        if(NOT TARGET SQLite::SQLite3 AND NOT TARGET SQLite3::SQLite3)
+            if(DEFINED SQLite3_LIBRARIES AND SQLite3_LIBRARIES)
                 add_library(SQLite::SQLite3 UNKNOWN IMPORTED)
                 set_target_properties(SQLite::SQLite3 PROPERTIES
                     IMPORTED_LOCATION "${SQLite3_LIBRARIES}"
                     INTERFACE_INCLUDE_DIRECTORIES "${SQLite3_INCLUDE_DIRS}"
                 )
-                add_library(sqlite ALIAS SQLite::SQLite3)
             endif()
         endif()
-        dsos_append_dep_status("sqlite: system")
-    else()
-        message(STATUS "SQLite3 not found; building vendored sqlite")
-        dsos_append_dep_status("sqlite: vendored")
-        add_subdirectory(sqlite)
+
+        if(TARGET SQLite::SQLite3)
+            add_library(sqlite ALIAS SQLite::SQLite3)
+        elseif(TARGET SQLite3::SQLite3)
+            add_library(sqlite ALIAS SQLite3::SQLite3)
+        endif()
+
+        if(TARGET sqlite)
+            dsos_append_dep_status("sqlite: system")
+        endif()
+    endif()
+
+    if(NOT TARGET sqlite)
+        message(FATAL_ERROR "Could not find a SQLite library target (expected \"sqlite\" or \"SQLite::SQLite3\").\n" \
+                        "Install the system sqlite dev package (e.g., libsqlite3-dev) or set DSOS_USE_VENDORED_SQLITE=ON to use the vendored copy.")
     endif()
 endif()
 
