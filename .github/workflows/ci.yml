@@ -167,12 +167,33 @@ jobs:
           cd "%GITHUB_WORKSPACE%\Tools"
           "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
 
+      - name: Report dependency fetch status (Windows)
+        if: matrix.name == 'windows-msbuild'
+        shell: cmd
+        run: |
+          if exist intermediate\vs2022\dependency-fetch-status.txt (
+            type intermediate\vs2022\dependency-fetch-status.txt
+          ) else (
+            echo "(dependency-fetch-status.txt not found)"
+          )
+
       - name: Generate Solution (Linux)
         if: matrix.name == 'linux-make'
         shell: bash
         run: |
           cd "${{ github.workspace }}/Tools"
           "${{ github.workspace }}/Tools/generate_make_release.sh"
+
+      - name: Report dependency fetch status (Linux)
+        if: matrix.name == 'linux-make'
+        shell: bash
+        run: |
+          status_file="${{ github.workspace }}/intermediate/make/dependency-fetch-status.txt"
+          if [[ -f "$status_file" ]]; then
+            cat "$status_file"
+          else
+            echo "(dependency-fetch-status.txt not found)"
+          fi
 
       - name: Add MSBuild to PATH
         if: matrix.name == 'windows-msbuild'
