@@ -117,7 +117,23 @@ if(DSOS_USE_VENDORED_SQLITE)
 else()
     find_package(SQLite3 QUIET)
     if(SQLite3_FOUND)
-        add_library(sqlite ALIAS SQLite::SQLite3)
+        # FindSQLite3 may define one of several targets depending on CMake version.
+        if(TARGET SQLite::SQLite3)
+            add_library(sqlite ALIAS SQLite::SQLite3)
+        elseif(TARGET SQLite3::SQLite3)
+            add_library(sqlite ALIAS SQLite3::SQLite3)
+        else()
+            # Some FindSQLite3 implementations (or older CMake) only provide variables.
+            # Create a minimal imported target so downstream code can link.
+            if(NOT TARGET SQLite::SQLite3 AND DEFINED SQLite3_LIBRARIES)
+                add_library(SQLite::SQLite3 UNKNOWN IMPORTED)
+                set_target_properties(SQLite::SQLite3 PROPERTIES
+                    IMPORTED_LOCATION "${SQLite3_LIBRARIES}"
+                    INTERFACE_INCLUDE_DIRECTORIES "${SQLite3_INCLUDE_DIRS}"
+                )
+                add_library(sqlite ALIAS SQLite::SQLite3)
+            endif()
+        endif()
         dsos_append_dep_status("sqlite: system")
     else()
         message(STATUS "SQLite3 not found; building vendored sqlite")
@@ -127,13 +143,14 @@ else()
 endif()
 
 # Provide a consistent, portable target name for consumers.
-# Some platforms/systems may provide only `SQLite::SQLite3` (from FindSQLite3), others
-# may provide a `sqlite` target (vendored build). Ensure both exist.
-if(NOT TARGET sqlite AND TARGET SQLite::SQLite3)
-    add_library(sqlite ALIAS SQLite::SQLite3)
-endif()
-if(NOT TARGET SQLite::SQLite3 AND TARGET sqlite)
-    add_library(SQLite::SQLite3 ALIAS sqlite)
+# Some platforms/systems may provide only `SQLite::SQLite3` or `SQLite3::SQLite3` (from FindSQLite3),
+# others may provide a `sqlite` target (vendored build). Ensure `sqlite` always exists.
+if(NOT TARGET sqlite)
+    if(TARGET SQLite::SQLite3)
+        add_library(sqlite ALIAS SQLite::SQLite3)
+    elseif(TARGET SQLite3::SQLite3)
+        add_library(sqlite ALIAS SQLite3::SQLite3)
+    endif()
 endif()
 
 # OpenSSL
