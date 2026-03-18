@@ -1,0 +1,29 @@
+# Ignore build outputs and intermediate artifacts
+build/
+build_*/
+Intermediate/
+Tools/
+
+# IDE/editor artifacts
+.vscode/
+*.user
+*.suo
+*.vcxproj.user
+*.sln.*
+
+# Binary outputs
+*.pdb
+*.obj
+*.exe
+*.dll
+*.log
+*.tmp
+*.cache
+
+# Git data
+.git/
+
+# Nix/caches
+result
+
+# Optional: adjust to your needs.

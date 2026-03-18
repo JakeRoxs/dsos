@@ -21,6 +21,21 @@ with builtins;
 with lib;
 
 let
+    civetwebArchive = builtins.fetchurl {
+      url = "https://github.com/civetweb/civetweb/archive/refs/tags/v1.15.tar.gz";
+      sha256 = "scstgqrjisvte6spxomwt4eelug3ubjvj6okztr2kac7uwpvso4q";
+    };
+
+    opensslArchive = builtins.fetchurl {
+      url = "https://github.com/kzalewski/openssl-1.1.1/archive/refs/tags/1.1.1ze.tar.gz";
+      sha256 = "yzjxxnrt444sr3vagewltyi55e3y6kstz5zepciuqqeskcameuaq";
+    };
+
+    curlArchive = builtins.fetchurl {
+      url = "https://curl.se/download/curl-8.1.0.tar.xz";
+      sha256 = "npmavvhqogdqcwirefxoogc3sdjillcrmkxndppncrhz7ezdfi6a";
+    };
+
     pkg = stdenv.mkDerivation rec {
         name = "ds3os";
 
@@ -60,6 +75,10 @@ let
             "-DDSOS_USE_VENDORED_SQLITE=OFF"
             # Use system OpenSSL (from nixpkgs) instead of the vendored copy
             "-DDSOS_USE_VENDORED_OPENSSL=OFF"
+            # When using Nix, supply the pre-fetched archive paths so CMake doesn't need network access.
+            "-DDSOS_CIVETWEB_ARCHIVE=file://${civetwebArchive}"
+            "-DDSOS_OPENSSL_ARCHIVE=file://${opensslArchive}"
+            "-DDSOS_CURL_ARCHIVE=file://${curlArchive}"
         ];
 
         # Can't pass multiple flags through cmakeFlags *sigh*
