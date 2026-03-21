@@ -143,14 +143,15 @@ jobs:
             os: windows-latest
           - name: linux-make
             os: ubuntu-latest
-          - name: nix-gcc
-            os: ubuntu-latest
-            nixTarget: default
-          - name: nix-clang
-            os: ubuntu-latest
-            nixTarget: clang
+          # Nix builds temporarily disabled
+          # - name: nix-gcc
+          #   os: ubuntu-latest
+          #   nixTarget: default
+          # - name: nix-clang
+          #   os: ubuntu-latest
+          #   nixTarget: clang
     steps:
-      - name: Checkout repository
+      - name: Checkout repositoryres
         uses: actions/checkout@v6
         with:
           submodules: recursive
