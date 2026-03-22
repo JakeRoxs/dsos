@@ -177,8 +177,18 @@ foreach(config ${CMAKE_CONFIGURATION_TYPES})
     # Server writes this out automatically now.
     #file(WRITE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${config_upper}}/steam_appid.txt" "374320")
 
-    # Copy WebUI resources to output folder
-    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../WebUI" DESTINATION "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${config_upper}}")
+    # Copy WebUI resources to output folder (if output path is configured).
+    set("dst_dir" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${config_upper}}")
+    if(NOT dst_dir)
+        # If runtime directory is not set yet, fall back to binary dir.
+        set(dst_dir "${CMAKE_BINARY_DIR}")
+    endif()
+
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../WebUI")
+        file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../WebUI" DESTINATION "${dst_dir}")
+    else()
+        message(WARNING "WebUI folder not found, skipping copy: ${CMAKE_CURRENT_SOURCE_DIR}/../WebUI")
+    endif()
 endforeach()
 
 util_setup_folder_structure(${PROJECT_NAME} SOURCES "DS3OS")
