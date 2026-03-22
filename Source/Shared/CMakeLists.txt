@@ -98,9 +98,11 @@ target_link_libraries(
     libcurl
     # OpenSSL target from ThirdParty/openssl
     openssl
-    libprotobuf-lite
     ${PLATFORM_LIBRARIES}
 )
+
+# Shared exposes protobuf headers in its public interface, so consumers need transitive protobuf include support.
+target_link_libraries(${PROJECT_NAME} PUBLIC libprotobuf-lite)
 
 if(TARGET OpenSSL::Crypto AND TARGET OpenSSL::SSL)
     target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::Crypto OpenSSL::SSL)

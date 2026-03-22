@@ -213,6 +213,7 @@ endif()
 target_link_libraries(ServerClientConfigTests PRIVATE
     Shared
     steam
+    libprotobuf-lite
 )
 
 add_test(NAME ServerClientConfigTests COMMAND ServerClientConfigTests)
