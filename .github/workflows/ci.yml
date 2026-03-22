@@ -234,8 +234,8 @@ jobs:
         run: |
           set -euxo pipefail
           sudo apt-get update
-          # Required for building OpenSSL/curl/zlib/sqlite
-          sudo apt-get install -y libssl-dev zlib1g-dev libsqlite3-dev pkg-config
+          # Required for building OpenSSL/curl/zlib/sqlite, and cmake to generate makefiles.
+          sudo apt-get install -y cmake libssl-dev zlib1g-dev libsqlite3-dev pkg-config
           # UUID is used by the project; different distros name it differently.
           sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
