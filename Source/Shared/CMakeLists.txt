@@ -87,19 +87,26 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES} ${PLATFORM_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/../")
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+target_compile_definitions(${PROJECT_NAME} PRIVATE -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS -DWIN32_LEAN_AND_MEAN -DNOMINMAX -D_WINSOCKAPI_ -D_WIN32_WINNT=0x0A00)
 
 target_link_libraries(
     ${PROJECT_NAME}
+    PRIVATE
     aes_modes
     lib_generic_c
     zlib
     libcurl
-    crypto
-    ssl
+    # OpenSSL target from ThirdParty/openssl
+    openssl
     libprotobuf-lite
     ${PLATFORM_LIBRARIES}
 )
+
+if(TARGET OpenSSL::Crypto AND TARGET OpenSSL::SSL)
+    target_link_libraries(${PROJECT_NAME} PRIVATE OpenSSL::Crypto OpenSSL::SSL)
+else()
+    target_link_libraries(${PROJECT_NAME} PRIVATE crypto ssl)
+endif()
 
 util_setup_folder_structure(${PROJECT_NAME} SOURCES "DS3OS")
 

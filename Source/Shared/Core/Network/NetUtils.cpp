@@ -10,6 +10,10 @@
 #include "Shared/Core/Network/NetUtils.h"
 #include "Shared/Core/Network/NetHttpRequest.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #ifdef __linux__
 #include <netdb.h>
 #include <unistd.h>
