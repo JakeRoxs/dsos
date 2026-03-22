@@ -3,6 +3,11 @@
 #  Copyright (C) 2022 Tim Leonard
 # ================================================================================================
 
+# Enforce C++17 across the project for modern std features used by Shared and others.
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 add_subdirectory(ThirdParty)
 
 if (WIN32)
