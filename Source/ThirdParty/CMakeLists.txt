@@ -51,6 +51,13 @@ if(DSOS_CIVETWEB_SOURCE_DIR)
     dsos_append_dep_status("civetweb: local source")
     add_subdirectory(${DSOS_CIVETWEB_SOURCE_DIR})
 else()
+    # CivetWeb upstream sets -pedantic-errors by default in many paths and can
+    # fail on compilers that do not support OS-specific language extension tokens.
+    set(CIVETWEB_ALLOW_WARNINGS ON CACHE BOOL "Do not treat warnings as errors in CivetWeb" FORCE)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fms-extensions")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fms-extensions")
+    endif()
     # Prefer a user-defined archive when provided (e.g., offline builds or pinned version).
     if(DEFINED DSOS_CIVETWEB_ARCHIVE AND DSOS_CIVETWEB_ARCHIVE)
         set(_civetweb_use_archive TRUE)
