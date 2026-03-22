@@ -9,11 +9,15 @@ add_subdirectory(protobuf-2.6.1rc1)
 add_subdirectory(steam)
 add_subdirectory(zlib)
 
-option(DSOS_USE_VENDORED_CIVETWEB "Build civetweb from the vendored Source/ThirdParty/civetweb sources" OFF)
+option(DSOS_USE_VENDORED_CIVETWEB "(deprecated) Build civetweb from vendored Source/ThirdParty/civetweb sources (removed)" OFF)
 set(DSOS_CIVETWEB_SOURCE_DIR "" CACHE PATH "Path to a local civetweb source tree to use instead of downloading it")
+set(DSOS_CIVETWEB_GIT_REPOSITORY "https://github.com/civetweb/civetweb.git" CACHE STRING "CivetWeb git repository to fetch when DSOS_CIVETWEB_SOURCE_DIR is unset")
+set(DSOS_CIVETWEB_GIT_TAG "master" CACHE STRING "CivetWeb branch/tag to checkout from the repository")
 
 option(DSOS_USE_VENDORED_SQLITE "Build sqlite from the vendored Source/ThirdParty/sqlite sources" OFF)
 set(DSOS_SQLITE_SOURCE_DIR "" CACHE PATH "Path to a local sqlite source tree to use instead of downloading it")
+set(DSOS_SQLITE_ARCHIVE "https://sqlite.org/2026/sqlite-autoconf-3510300.tar.gz" CACHE STRING "URL to a SQLite source archive for FetchContent resolution when system sqlite is unavailable")
+option(DSOS_SQLITE_ALLOW_REMOTE_FETCH "Allow automatically fetching SQLite via network when system sqlite is not available" ON)
 
 option(DSOS_USE_VENDORED_OPENSSL "Build OpenSSL from the vendored Source/ThirdParty/openssl sources" OFF)
 set(DSOS_OPENSSL_SOURCE_DIR "" CACHE PATH "Path to a local openssl source tree to use instead of downloading it")
@@ -39,87 +43,100 @@ endfunction()
 
 # CivetWeb
 if(DSOS_USE_VENDORED_CIVETWEB)
-    dsos_append_dep_status("civetweb: vendored (forced)")
-    add_subdirectory(civetweb)
-else()
-    if(DSOS_CIVETWEB_SOURCE_DIR)
-        add_subdirectory(${DSOS_CIVETWEB_SOURCE_DIR})
-    else()
-        # First try to download the civetweb archive, but fall back to the vendored
-        # source tree on failure (e.g., transient network issues or blocked downloads).
-        if(DEFINED DSOS_CIVETWEB_ARCHIVE AND DSOS_CIVETWEB_ARCHIVE)
-            # Prefer a pre-fetched local archive (e.g., provided by Nix) to avoid
-            # requiring network access inside the build sandbox.
-            set(_civetweb_url "${DSOS_CIVETWEB_ARCHIVE}")
-            set(_civetweb_hash "SHA256=90a533422944ab327a4fbb9969f0845d0dba05354f9cacce3a5005fa59f593b9")
-        else()
-            set(_civetweb_url "https://github.com/civetweb/civetweb/archive/refs/tags/v1.15.tar.gz")
-            set(_civetweb_hash "SHA256=90a533422944ab327a4fbb9969f0845d0dba05354f9cacce3a5005fa59f593b9")
-        endif()
-        set(_civetweb_archive "${CMAKE_BINARY_DIR}/_deps/civetweb-1.15.tar.gz")
-        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_deps")
+    message(WARNING "DSOS_USE_VENDORED_CIVETWEB=ON is not supported; Source/ThirdParty/civetweb is removed. Falling back to DSOS_CIVETWEB_SOURCE_DIR/FetchContent.")
+    dsos_append_dep_status("civetweb: vendored-unsupported")
+endif()
 
+if(DSOS_CIVETWEB_SOURCE_DIR)
+    dsos_append_dep_status("civetweb: local source")
+    add_subdirectory(${DSOS_CIVETWEB_SOURCE_DIR})
+else()
+    # Prefer a user-defined archive when provided (e.g., offline builds or pinned version).
+    if(DEFINED DSOS_CIVETWEB_ARCHIVE AND DSOS_CIVETWEB_ARCHIVE)
+        set(_civetweb_use_archive TRUE)
+        set(_civetweb_url "${DSOS_CIVETWEB_ARCHIVE}")
+        set(_civetweb_hash "SHA256=90a533422944ab327a4fbb9969f0845d0dba05354f9cacce3a5005fa59f593b9")
+    else()
+        set(_civetweb_use_archive FALSE)
+    endif()
+
+    message(STATUS "CivetWeb: using module=${_civetweb_use_archive} archive=${DSOS_CIVETWEB_ARCHIVE}")
+
+    if(_civetweb_use_archive)
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_deps")
+        set(_civetweb_archive "${CMAKE_BINARY_DIR}/_deps/civetweb-archive.tar.gz")
         file(DOWNLOAD "${_civetweb_url}" "${_civetweb_archive}" STATUS _dl_status SHOW_PROGRESS)
         list(GET _dl_status 0 _dl_res)
 
         if(_dl_res EQUAL 0 AND EXISTS "${_civetweb_archive}")
             message(STATUS "Fetched CivetWeb archive to ${_civetweb_archive}")
-            dsos_append_dep_status("civetweb: fetched")
+            dsos_append_dep_status("civetweb: fetched archive")
 
-            message(STATUS "Using FetchContent to populate CivetWeb")
             FetchContent_Declare(
                 civetweb
                 URL "${_civetweb_archive}"
                 URL_HASH ${_civetweb_hash}
             )
-            FetchContent_GetProperties(civetweb)
-            if(NOT civetweb_POPULATED)
-                # Older releases of CivetWeb use low cmake_minimum_required values.
-                # Patch their CMakeLists before it is processed.
-                if(POLICY CMP0169)
-                    cmake_policy(SET CMP0169 OLD)
-                endif()
-                FetchContent_Populate(civetweb)
-                if(POLICY CMP0169)
-                    cmake_policy(SET CMP0169 NEW)
-                endif()
-            endif()
-
-            # Patch CivetWeb's CMakeLists if needed (covers both initial fetch and cached content).
-            if(EXISTS "${civetweb_SOURCE_DIR}/CMakeLists.txt")
-                file(READ "${civetweb_SOURCE_DIR}/CMakeLists.txt" _civ RESULT_VARIABLE _civ_read_result)
-                if(_civ_read_result EQUAL 0)
-                    set(_civ_orig "${_civ}")
-                    string(REPLACE "cmake_minimum_required (VERSION 3.3.0)" "cmake_minimum_required (VERSION 3.10)" _civ "${_civ}")
-                    string(REPLACE "cmake_policy(VERSION 3.2.2)" "cmake_policy(VERSION 3.10)" _civ "${_civ}")
-                    if(NOT _civ STREQUAL "${_civ_orig}")
-                        file(WRITE "${civetweb_SOURCE_DIR}/CMakeLists.txt" "${_civ}")
-                        message(STATUS "Patched CivetWeb CMakeLists.txt to use a newer CMake policy/requirement")
-                    endif()
-                else()
-                    message(WARNING "Unable to patch CivetWeb CMakeLists.txt (${civetweb_SOURCE_DIR}): ${_civ_read_result}")
-                endif()
-            endif()
-
-            # Disable civetweb unit tests / external project downloads (e.g., check-unit-test-framework).
-            set(CIVETWEB_BUILD_TESTING OFF CACHE BOOL "Disable CivetWeb unit tests" FORCE)
-
-            # Enable the C++ wrapper library so downstream code can link against the
-            # CivetHandler/CivetServer C++ API.
-            set(CIVETWEB_ENABLE_CXX ON CACHE BOOL "Enable the CivetWeb C++ wrapper" FORCE)
-
-            add_subdirectory(${civetweb_SOURCE_DIR} ${civetweb_BINARY_DIR})
-            # Upstream civetweb provides a C++ wrapper target (civetweb-cpp) that
-            # includes CivetHandler/CivetServer. If present, prefer it as the
-            # canonical "civetweb" target. Otherwise, fall back to the C API library.
-            if(TARGET civetweb-cpp AND NOT TARGET civetweb)
-                add_library(civetweb ALIAS civetweb-cpp)
-            elseif(TARGET civetweb-c-library AND NOT TARGET civetweb)
-                add_library(civetweb ALIAS civetweb-c-library)
-            endif()
         else()
             message(FATAL_ERROR "Failed to download CivetWeb archive (${_civetweb_url}); cannot continue without FetchContent. To build from vendored sources instead, set -DDSOS_USE_VENDORED_CIVETWEB=ON.")
         endif()
+    else()
+        message(STATUS "Fetching CivetWeb from ${DSOS_CIVETWEB_GIT_REPOSITORY}@${DSOS_CIVETWEB_GIT_TAG}")
+        dsos_append_dep_status("civetweb: fetched git")
+
+        FetchContent_Declare(
+            civetweb
+            GIT_REPOSITORY "${DSOS_CIVETWEB_GIT_REPOSITORY}"
+            GIT_TAG "${DSOS_CIVETWEB_GIT_TAG}"
+            GIT_SHALLOW TRUE
+            GIT_PROGRESS TRUE
+        )
+    endif()
+
+    FetchContent_GetProperties(civetweb)
+    if(NOT civetweb_POPULATED)
+        # Older releases of CivetWeb use low cmake_minimum_required values.
+        # Patch their CMakeLists before it is processed.
+        if(POLICY CMP0169)
+            cmake_policy(SET CMP0169 OLD)
+        endif()
+        FetchContent_Populate(civetweb)
+        if(POLICY CMP0169)
+            cmake_policy(SET CMP0169 NEW)
+        endif()
+    endif()
+
+    # Patch CivetWeb's CMakeLists if needed (covers both initial fetch and cached content).
+    if(EXISTS "${civetweb_SOURCE_DIR}/CMakeLists.txt")
+        file(READ "${civetweb_SOURCE_DIR}/CMakeLists.txt" _civ RESULT_VARIABLE _civ_read_result)
+        if(_civ_read_result EQUAL 0)
+            set(_civ_orig "${_civ}")
+            string(REPLACE "cmake_minimum_required (VERSION 3.3.0)" "cmake_minimum_required (VERSION 3.10)" _civ "${_civ}")
+            string(REPLACE "cmake_policy(VERSION 3.2.2)" "cmake_policy(VERSION 3.10)" _civ "${_civ}")
+            if(NOT _civ STREQUAL "${_civ_orig}")
+                file(WRITE "${civetweb_SOURCE_DIR}/CMakeLists.txt" "${_civ}")
+                message(STATUS "Patched CivetWeb CMakeLists.txt to use a newer CMake policy/requirement")
+            endif()
+        else()
+            message(WARNING "Unable to patch CivetWeb CMakeLists.txt (${civetweb_SOURCE_DIR}): ${_civ_read_result}")
+        endif()
+    endif()
+
+    # Disable civetweb unit tests / external project downloads (e.g., check-unit-test-framework).
+    set(CIVETWEB_BUILD_TESTING OFF CACHE BOOL "Disable CivetWeb unit tests" FORCE)
+
+    # Enable the C++ wrapper library so downstream code can link against the
+    # CivetHandler/CivetServer C++ API.
+    set(CIVETWEB_ENABLE_CXX ON CACHE BOOL "Enable the CivetWeb C++ wrapper" FORCE)
+
+    add_subdirectory(${civetweb_SOURCE_DIR} ${civetweb_BINARY_DIR})
+    # Upstream civetweb provides a C++ wrapper target (civetweb-cpp) that
+    # includes CivetHandler/CivetServer. If present, prefer it as the
+    # canonical "civetweb" target. Otherwise, fall back to the C API library.
+    if(TARGET civetweb-cpp AND NOT TARGET civetweb)
+        add_library(civetweb ALIAS civetweb-cpp)
+    elseif(TARGET civetweb-c-library AND NOT TARGET civetweb)
+        add_library(civetweb ALIAS civetweb-c-library)
     endif()
 endif()
 
@@ -230,16 +247,92 @@ else()
         endif()
     endif()
 
-    # If we still don't have a usable SQLite target, fall back to the vendored build.
     if(NOT TARGET sqlite)
-        message(WARNING "Could not locate a usable SQLite target; falling back to vendored sqlite")
-        dsos_append_dep_status("sqlite: vendored")
-        add_subdirectory(sqlite)
+        if(NOT DSOS_SQLITE_ALLOW_REMOTE_FETCH)
+            message(FATAL_ERROR "Could not locate system SQLite3, vendored SQLite usage is disabled, and automatic remote fetch is disabled.\n" 
+                                "Install SQLite3 development package (e.g. vcpkg sqlite3 on Windows or libsqlite3-dev on Linux),\n" 
+                                "or enable DSOS_USE_VENDORED_SQLITE=ON.\n")
+        endif()
 
-        if(TARGET sqlite)
-            message(STATUS "Vendored sqlite target created successfully: sqlite")
+        # Attempt to fetch SQLite from GitHub (latest backports) as a non-vendored fallback.
+        # This path supports todo 037: externalized dependency usage from upstream repo.
+        set(_sqlite_fetch_url "${DSOS_SQLITE_ARCHIVE}")
+        if(NOT _sqlite_fetch_url)
+            set(_sqlite_fetch_url "https://sqlite.org/2026/sqlite-autoconf-3510300.tar.gz")
+        endif()
+
+        set(_sqlite_archive "${CMAKE_BINARY_DIR}/_deps/sqlite-fetch.tar.gz")
+        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_deps")
+
+        file(DOWNLOAD "${_sqlite_fetch_url}" "${_sqlite_archive}" STATUS _dl_status SHOW_PROGRESS)
+        list(GET _dl_status 0 _dl_res)
+
+        if(_dl_res EQUAL 0 AND EXISTS "${_sqlite_archive}")
+            message(STATUS "Fetched SQLite archive to ${_sqlite_archive}")
+            dsos_append_dep_status("sqlite: fetched")
+
+            FetchContent_Declare(
+                sqlite_fetch
+                URL "${_sqlite_archive}"
+            )
+            FetchContent_GetProperties(sqlite_fetch)
+            if(NOT sqlite_fetch_POPULATED)
+                # CMP0169: `FetchContent_Populate` is deprecated for direct use with declared content.
+                # Use `FetchContent_MakeAvailable` to be forward-compatible.
+                FetchContent_MakeAvailable(sqlite_fetch)
+            endif()
+
+            set(_sqlite_extracted_dir "${sqlite_fetch_SOURCE_DIR}")
+            # Some CMake distributions may not auto-populate compression archives when
+            # there is no CMakeLists.txt in the archive; in that case, unpack manually.
+            if(NOT EXISTS "${_sqlite_extracted_dir}/sqlite3.c")
+                set(_sqlite_manual_extract_dir "${CMAKE_BINARY_DIR}/_deps/sqlite_fetch_unpack")
+                file(REMOVE_RECURSE "${_sqlite_manual_extract_dir}")
+                file(MAKE_DIRECTORY "${_sqlite_manual_extract_dir}")
+                file(ARCHIVE_EXTRACT INPUT "${_sqlite_archive}" DESTINATION "${_sqlite_manual_extract_dir}")
+                set(_sqlite_extracted_dir "${_sqlite_manual_extract_dir}")
+            endif()
+
+            # SQLite upstream source does not provide a CMake project we can use directly.
+            # Build from the amalgamation sqlite3.c source file.
+            set(_sqlite3_source "${_sqlite_extracted_dir}/sqlite3.c")
+            if(NOT EXISTS "${_sqlite3_source}")
+                message(STATUS "sqlite3.c not found at ${_sqlite3_source}; trying nested directory detect in ${_sqlite_extracted_dir}")
+
+                file(GLOB _sqlite_entries "${_sqlite_extracted_dir}/*")
+                foreach(_entry IN LISTS _sqlite_entries)
+                    if(IS_DIRECTORY "${_entry}" AND EXISTS "${_entry}/sqlite3.c")
+                        set(_sqlite3_source "${_entry}/sqlite3.c")
+                        message(STATUS "Found sqlite3.c at ${_sqlite3_source} in nested folder")
+                        break()
+                    endif()
+                endforeach()
+            endif()
+
+            if(NOT EXISTS "${_sqlite3_source}")
+                message(STATUS "Still no sqlite3.c; searching recursively under ${_sqlite_extracted_dir}")
+                file(GLOB_RECURSE _sqlite3_files "${_sqlite_extracted_dir}/*.c")
+                foreach(_entry IN LISTS _sqlite3_files)
+                    get_filename_component(_name "${_entry}" NAME)
+                    if(_name STREQUAL "sqlite3.c")
+                        set(_sqlite3_source "${_entry}")
+                        message(STATUS "Found sqlite3.c at ${_sqlite3_source} via recursive scan")
+                        break()
+                    endif()
+                endforeach()
+            endif()
+
+            if(EXISTS "${_sqlite3_source}")
+                get_filename_component(_sqlite_include_dir "${_sqlite3_source}" DIRECTORY)
+                add_library(sqlite STATIC "${_sqlite3_source}")
+                target_include_directories(sqlite PUBLIC "${_sqlite_include_dir}")
+                add_library(SQLite::SQLite3 ALIAS sqlite)
+                set(DSOS_SQLITE_AVAILABLE TRUE)
+            else()
+                message(WARNING "Fetched SQLite archive does not include sqlite3.c (unexpected).")
+            endif()
         else()
-            message(WARNING "Vendored sqlite did not create a 'sqlite' target; downstream linking will fail")
+            message(FATAL_ERROR "Could not locate a usable SQLite target. Install a system sqlite3 development package (e.g. libsqlite3-dev on Linux, vcpkg sqlite3 on Windows) so FindSQLite3 succeeds.  If you must, you can optionally use vendored sqlite via -DDSOS_USE_VENDORED_SQLITE=ON. Fetch attempt from ${_sqlite_fetch_url} returned ${_dl_res}.")
         endif()
     endif()
     endif()  # end if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
@@ -261,42 +354,27 @@ endif()
 
 # OpenSSL
 if(DSOS_USE_VENDORED_OPENSSL)
-    dsos_append_dep_status("openssl: vendored (forced)")
-    add_subdirectory(openssl)
+    message(WARNING "DSOS_USE_VENDORED_OPENSSL=ON is not supported; Source/ThirdParty/openssl has been removed. Falling back to system or FetchContent build path.")
+endif()
+
+# Prefer manual local source over system; see docs/BUILD if this is not desirable.
+if(DEFINED DSOS_OPENSSL_SOURCE_DIR AND DSOS_OPENSSL_SOURCE_DIR AND EXISTS "${DSOS_OPENSSL_SOURCE_DIR}/include/openssl/opensslv.h")
+    dsos_append_dep_status("openssl: local source")
+    message(STATUS "Building OpenSSL from DSOS_OPENSSL_SOURCE_DIR=${DSOS_OPENSSL_SOURCE_DIR}")
+    set(_openssl_source_build_dir "${CMAKE_BINARY_DIR}/_deps/openssl-local-build")
+    file(MAKE_DIRECTORY "${_openssl_source_build_dir}")
+    add_subdirectory("${DSOS_OPENSSL_SOURCE_DIR}" "${_openssl_source_build_dir}")
     add_library(openssl INTERFACE)
     target_link_libraries(openssl INTERFACE ssl crypto)
-    target_include_directories(openssl INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/openssl/include")
+    target_include_directories(openssl INTERFACE "${DSOS_OPENSSL_SOURCE_DIR}/include")
 else()
-    # If DSOS_OPENSSL_SOURCE_DIR is set to a build/_deps path (from a prior FetchContent run),
-    # clear it so we can re-evaluate the correct source selection path.
-    if(DEFINED DSOS_OPENSSL_SOURCE_DIR AND DSOS_OPENSSL_SOURCE_DIR AND
-       DSOS_OPENSSL_SOURCE_DIR MATCHES "${CMAKE_BINARY_DIR}.*")
-        unset(DSOS_OPENSSL_SOURCE_DIR CACHE)
-    endif()
-
     find_package(OpenSSL QUIET)
     if(OpenSSL_FOUND)
         dsos_append_dep_status("openssl: system")
         add_library(openssl INTERFACE)
         target_link_libraries(openssl INTERFACE OpenSSL::Crypto OpenSSL::SSL)
         target_include_directories(openssl INTERFACE ${OPENSSL_INCLUDE_DIR})
-    elseif(DEFINED DSOS_OPENSSL_SOURCE_DIR AND DSOS_OPENSSL_SOURCE_DIR)
-        if(EXISTS "${DSOS_OPENSSL_SOURCE_DIR}/CMakeLists.txt")
-            message(STATUS "Building OpenSSL from local source: ${DSOS_OPENSSL_SOURCE_DIR}")
-            add_subdirectory(openssl)
-            add_library(openssl INTERFACE)
-            target_link_libraries(openssl INTERFACE ssl crypto)
-            target_include_directories(openssl INTERFACE "${DSOS_OPENSSL_SOURCE_DIR}/include")
-        else()
-            message(WARNING "DSOS_OPENSSL_SOURCE_DIR=${DSOS_OPENSSL_SOURCE_DIR} does not appear to be a CMake-enabled OpenSSL tree; falling back to vendored OpenSSL")
-            add_subdirectory(openssl)
-            add_library(openssl INTERFACE)
-            target_link_libraries(openssl INTERFACE ssl crypto)
-            target_include_directories(openssl INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/openssl/include")
-        endif()
     else()
-        # Try to download the wrapped OpenSSL CMake build, but fall back to vendored OpenSSL
-        # if the download fails (e.g., transient network issues).
         if(DEFINED DSOS_OPENSSL_ARCHIVE AND DSOS_OPENSSL_ARCHIVE)
             set(_openssl_url "${DSOS_OPENSSL_ARCHIVE}")
             set(_openssl_hash "SHA256=c6537bb633e73928eea0312cb9e11de9378f2a53cf72478914840925080c2501")
@@ -319,14 +397,14 @@ else()
                 URL_HASH ${_openssl_hash}
             )
             FetchContent_MakeAvailable(openssl_cmake)
-            set(openssl_cmake_source_dir "${openssl_cmake_SOURCE_DIR}")
+            set(_openssl_source_dir "${openssl_cmake_SOURCE_DIR}")
 
-            # Build OpenSSL using our bundled CMake wrapper, but point it at the fetched source tree
-            set(DSOS_OPENSSL_SOURCE_DIR "${openssl_cmake_source_dir}" CACHE PATH "Path to a local openssl source tree to use instead of downloading it" FORCE)
-            add_subdirectory(openssl)
+            set(_openssl_source_build_dir "${CMAKE_BINARY_DIR}/_deps/openssl-fetched-build")
+            file(MAKE_DIRECTORY "${_openssl_source_build_dir}")
+            add_subdirectory("${_openssl_source_dir}" "${_openssl_source_build_dir}")
             add_library(openssl INTERFACE)
             target_link_libraries(openssl INTERFACE ssl crypto)
-            target_include_directories(openssl INTERFACE "${openssl_cmake_source_dir}/include")
+            target_include_directories(openssl INTERFACE "${_openssl_source_dir}/include")
         else()
             message(FATAL_ERROR "Failed to download OpenSSL archive (${_openssl_url}); cannot continue without FetchContent. To build from vendored sources instead, set -DDSOS_USE_VENDORED_OPENSSL=ON.")
         endif()

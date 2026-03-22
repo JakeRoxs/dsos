@@ -41,14 +41,19 @@
 using namespace std::chrono_literals;
 
 Client::Client()
+    : Client(ClientConfig())
 {
-    // TODO: Move this stuff into a RuntimeConfig type class.
+}
+
+Client::Client(const ClientConfig& config)
+    : Config(config)
+{
     SavedPath = std::filesystem::current_path() / std::filesystem::path("ClientSaved");
     DatabasePath = SavedPath / std::filesystem::path("database.sqlite");
 
-    // Register for Ctrl+C notifications, its the only way the server shuts down right now.
+    // Register for Ctrl+C notifications, it's the only way the server shuts down right now.
     CtrlSignalHandle = PlatformEvents::OnCtrlSignal.Register([=]() {
-        Warning("Quit signal received, starting shutdown.");        
+        Warning("Quit signal received, starting shutdown.");
         QuitReceived = true;
     });
 }
@@ -58,19 +63,23 @@ Client::~Client()
     CtrlSignalHandle.reset();
 }
 
-bool Client::Init(bool InDisablePersistentData, size_t InInstanceId)
+bool Client::Init(bool inDisablePersistentData, size_t inInstanceId)
 {
-    DisablePersistentData = InDisablePersistentData;
-    InstanceId = InInstanceId;
+    Config.DisablePersistentData = inDisablePersistentData;
+    Config.InstanceId = inInstanceId;
+    return Init();
+}
 
+bool Client::Init()
+{
     ClientStreamId = StringFormat("%016llx", SteamUser()->GetSteamID().ConvertToUint64());
 
-    if (DisablePersistentData)
+    if (Config.DisablePersistentData)
     {
-        ClientStreamId = StringFormat("%016llx", InstanceId);
+        ClientStreamId = StringFormat("%016llx", Config.InstanceId);
     }
 
-    if (!DisablePersistentData)
+    if (!Config.DisablePersistentData)
     {
         // We use template files from a given steam-id, you will probably get banned if you run
         // this on any arbitrary account without replacing the templates.
@@ -79,7 +88,7 @@ bool Client::Init(bool InDisablePersistentData, size_t InInstanceId)
 
     //LogS(GetName().c_str(), "Initializing client '%s' ...", ClientStreamId.c_str());
 
-    if (!DisablePersistentData)
+    if (!Config.DisablePersistentData)
     {
         // Generate folder we are going to save everything into.
         if (!std::filesystem::is_directory(SavedPath))
@@ -99,7 +108,7 @@ bool Client::Init(bool InDisablePersistentData, size_t InInstanceId)
         }
     }
 
-    if (!PrimaryKeyPair.LoadPublicKeyFromString(ServerPublicKey))
+    if (!PrimaryKeyPair.LoadPublicKeyFromString(Config.ServerPublicKey))
     {
         ErrorS(GetName().c_str(), "Failed to load rsa keypair.");
         return false;
@@ -293,9 +302,9 @@ void Client::Handle_LoginServer_Connect()
     //LogS(GetName().c_str(), "Connecting to login server.");
 
     LoginServerConnection = std::make_shared<NetConnectionTCP>("Client Emulator - Login Server");
-    if (!LoginServerConnection->Connect(ServerIP, ServerPort, true))
+    if (!LoginServerConnection->Connect(Config.ServerIP, Config.ServerPort, true))
     {
-        Abort("Failed to connect to server at %s:%i", ServerIP, ServerPort);
+        Abort("Failed to connect to server at %s:%i", Config.ServerIP.c_str(), Config.ServerPort);
     }
 
     LoginServerMessageStream = std::make_shared<Frpg2MessageStream>(LoginServerConnection, &PrimaryKeyPair, true);

@@ -16,6 +16,13 @@ include(common)
 # policy version exceeds that.  Set a loose policy range to avoid this.
 cmake_policy(VERSION 3.10...${CMAKE_VERSION})
 
+# Some vendored dependencies (CivetWeb 1.15) still declare CMake < 3.5 and
+# CMake 3.30+ rejects that unless CMAKE_POLICY_VERSION_MINIMUM is set.
+# This default allows upstream third-party projects to configure successfully.
+if(NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
+    set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum CMake policy version for legacy third-party deps")
+endif()
+
 project(ds3os C CXX)
 
 # Always generate a compile_commands.json database for tools such as

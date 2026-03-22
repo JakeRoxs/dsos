@@ -182,3 +182,17 @@ foreach(config ${CMAKE_CONFIGURATION_TYPES})
 endforeach()
 
 util_setup_folder_structure(${PROJECT_NAME} SOURCES "DS3OS")
+
+#-----------------------------------------------------------------------------#
+# Client emulator config unit tests
+#-----------------------------------------------------------------------------#
+add_executable(ServerClientConfigTests
+    Client/Tests/ClientConfigTests.cpp
+)
+
+target_include_directories(ServerClientConfigTests PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(NAME ServerClientConfigTests COMMAND ServerClientConfigTests)
+
