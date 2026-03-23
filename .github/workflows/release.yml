@@ -66,6 +66,23 @@ jobs:
           cd "%GITHUB_WORKSPACE%\Tools"
           "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
 
+      - name: Clean stale CMake cache (Windows)
+        if: matrix.platform == 'windows'
+        shell: cmd
+        run: |
+          if exist intermediate\vs2022\CMakeCache.txt del /f /q intermediate\vs2022\CMakeCache.txt
+          if exist intermediate\vs2022\CMakeFiles rmdir /s /q intermediate\vs2022\CMakeFiles
+
+      - name: Report dependency fetch status (Windows)
+        if: matrix.platform == 'windows'
+        shell: cmd
+        run: |
+          if exist intermediate\vs2022\dependency-fetch-status.txt (
+            type intermediate\vs2022\dependency-fetch-status.txt
+          ) else (
+            echo "(dependency-fetch-status.txt not found)"
+          )
+
       - name: Generate Solution (Linux)
         if: matrix.platform == 'linux'
         shell: bash
@@ -88,7 +105,35 @@ jobs:
         working-directory: ${{github.workspace}}
         run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Restore
 
-      - name: Build Windows
+      - name: Build on Windows (Ninja)
+        if: matrix.platform == 'windows'
+        working-directory: ${{github.workspace}}/intermediate/vs2022
+        shell: cmd
+        run: |
+          for /f "delims=" %%V in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath') do set "VS_INSTALL_DIR=%%V"
+          if defined VS_INSTALL_DIR (
+            echo Using VSINSTALLDIR=%%VS_INSTALL_DIR%%
+            call "%%VS_INSTALL_DIR%%\VC\Auxiliary\Build\vcvars64.bat"
+          ) else (
+            echo VSInstallDir not found; trying default path
+            if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
+              call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+            ) else (
+              echo Warning: vcvars64.bat not found in default location. Proceeding without it.
+            )
+          )
+          if defined NUMBER_OF_PROCESSORS (
+            set /A JOBS=%NUMBER_OF_PROCESSORS%
+          ) else (
+            set /A JOBS=0
+          )
+          if %JOBS% GTR 0 (
+            ninja -j %JOBS%
+          ) else (
+            ninja
+          )
+
+      - name: Build Windows (Loader + MSI)
         if: matrix.platform == 'windows'
         shell: pwsh
         run: |
@@ -100,17 +145,27 @@ jobs:
           /p:FileVersion=${{env.VERSION_NUMBER}} /p:AssemblyVersion=${{env.VERSION_NUMBER}}
           msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Build
 
-      - name: Install uuid development package
+      - name: Install required development packages (Linux)
         if: matrix.platform == 'linux'
         run: |
           set -euxo pipefail
           sudo apt-get update
+          # Required for building OpenSSL/curl/zlib/sqlite, and cmake to generate build files.
+          sudo apt-get install -y cmake ninja-build libssl-dev zlib1g-dev libsqlite3-dev pkg-config
+          # UUID is used by the project; different distros name it differently.
           sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
-      - name: Build Linux
+      - name: Clean stale CMake cache (Linux)
+        if: matrix.platform == 'linux'
+        shell: bash
+        run: |
+          rm -f intermediate/make/CMakeCache.txt
+          rm -rf intermediate/make/CMakeFiles
+
+      - name: Build Linux (Ninja)
         if: matrix.platform == 'linux'
         working-directory: ${{github.workspace}}/intermediate/make
-        run: make -j$(nproc)
+        run: ninja -j$(nproc)
 
       - name: Package Release (Windows)
         if: matrix.platform == 'windows'
