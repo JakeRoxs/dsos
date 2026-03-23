@@ -221,12 +221,12 @@ else()
     endif()
     if(TARGET civetweb-cpp)
         target_compile_options(civetweb-cpp PRIVATE
-            $<$<OR:$<C_COMPILER_ID:Clang>,$<C_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=language-extension-token -Wno-language-extension-token>
+            $<$<OR:$<C_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:Clang>>:-Wno-error=language-extension-token -Wno-language-extension-token>
         )
     endif()
     if(TARGET civetweb-c-library)
         target_compile_options(civetweb-c-library PRIVATE
-            $<$<OR:$<C_COMPILER_ID:Clang>,$<C_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=language-extension-token -Wno-language-extension-token>
+            $<$<OR:$<C_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:Clang>>:-Wno-error=language-extension-token -Wno-language-extension-token>
         )
     endif()
 endif()
