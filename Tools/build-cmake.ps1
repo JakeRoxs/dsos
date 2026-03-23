@@ -16,11 +16,11 @@ param(
 )
 
 # Set SourceDir default to repo root, as script is run from Tools folder.
-if($SourceDir -eq ".") {
+if ($SourceDir -eq ".") {
     $SourceDir = Split-Path -Parent $PSScriptRoot
 }
 
-if($Help) {
+if ($Help) {
     Write-Host "Usage: .\\Tools\\build-cmake.ps1 [-Generator <Ninja|Visual Studio 18 2026|...>] [-BuildType <Debug|Release>] [-SourceDir <path>] [-BuildDir <path>] [-Clean] [-DryRun]"
     return
 }
@@ -55,39 +55,52 @@ function Get-JobCountForBuild {
 
 function Find-VisualStudioGenerator {
     $vswhere = "$Env:ProgramFiles(x86)\Microsoft Visual Studio\Installer\vswhere.exe"
-    if(-not (Test-Path $vswhere)) { return $null }
+    if (-not (Test-Path $vswhere)) { return $null }
 
     $vsinfo = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationVersion -nologo 2>$null
-    if(-not $vsinfo) { return $null }
+    if (-not $vsinfo) { return $null }
 
-    if($vsinfo -match '^18(\.|$)') { return 'Visual Studio 18 2026' }
-    if($vsinfo -match '^17(\.|$)') { return 'Visual Studio 17 2022' }
-    if($vsinfo -match '^16(\.|$)') { return 'Visual Studio 16 2019' }
+    if ($vsinfo -match '^18(\.|$)') { return 'Visual Studio 18 2026' }
+    if ($vsinfo -match '^17(\.|$)') { return 'Visual Studio 17 2022' }
+    if ($vsinfo -match '^16(\.|$)') { return 'Visual Studio 16 2019' }
     return $null
 }
 
-if(-not $Generator) {
-    if(Get-Command ninja -ErrorAction SilentlyContinue) {
+if (-not $Generator) {
+    if (Get-Command ninja -ErrorAction SilentlyContinue) {
         $Generator = 'Ninja'
         Write-Host "Using detected generator: Ninja"
     }
-    elseif(Get-Command g++ -ErrorAction SilentlyContinue -or Get-Command clang++ -ErrorAction SilentlyContinue) {
+    elseif (Get-Command g++ -ErrorAction SilentlyContinue -or Get-Command clang++ -ErrorAction SilentlyContinue) {
         $Generator = 'Ninja'
         Write-Host "Using default generator: Ninja (compiler found)"
     }
     else {
         $Generator = Find-VisualStudioGenerator
-        if($Generator) { Write-Host "Using detected Visual Studio generator: $Generator" }
+        if ($Generator) {
+            Write-Host "Using detected Visual Studio generator: $Generator"
+        }
+        else {
+            if ($Env:GENERATOR) {
+                $Generator = $Env:GENERATOR
+                Write-Host "Using generator from GENERATOR env var: $Generator"
+            }
+            else {
+                # Match the behavior of generate_vs2022.bat default generator.
+                $Generator = 'Visual Studio 17 2022'
+                Write-Host "Using default Visual Studio generator: $Generator"
+            }
+        }
     }
 }
 
-if(-not $Generator) {
+if (-not $Generator) {
     Write-Host "ERROR: No supported CMake generator found (Ninja or Visual Studio)." -ForegroundColor Red
     Write-Host "Install Ninja (https://ninja-build.org) or Visual Studio with C++ workload, then rerun with -Generator."
     throw "Generator detection failed"
 }
 
-if($Clean -and (Test-Path $BuildDir)) {
+if ($Clean -and (Test-Path $BuildDir)) {
     Write-Host "Cleaning existing build folder: $BuildDir"
     Remove-Item -Recurse -Force $BuildDir
 }
@@ -101,23 +114,16 @@ $cmakeArgs = @(
 )
 
 Write-Host "Configuring with: cmake $($cmakeArgs -join ' ')"
-if(-not $DryRun) {
+if (-not $DryRun) {
     cmake @cmakeArgs
-    if($LASTEXITCODE -ne 0) { throw "CMake configure failed with exit code $LASTEXITCODE" }
+    if ($LASTEXITCODE -ne 0) { throw "CMake configure failed with exit code $LASTEXITCODE" }
 
     Write-Host "Building project ($BuildType)..."
 
-    # Ensure OpenSSL external project is built first when available, so libcrypto/libssl exist.
-    $allTargets = cmake --build $BuildDir --target help 2>&1
-    if ($allTargets -match 'openssl_fetched_build') {
-        Write-Host "OpenSSL fetched build target detected; building openssl_fetched_build first..."
-        cmake --build $BuildDir --config $BuildType --target openssl_fetched_build
-        if ($LASTEXITCODE -ne 0) { throw "OpenSSL fetch/build failed with exit code $LASTEXITCODE" }
-    }
-
-    if($Generator -like 'Visual Studio*') {
+    if ($Generator -like 'Visual Studio*') {
         cmake --build $BuildDir --config $BuildType -- /m
-    } else {
+    }
+    else {
         # Force numeric value and filter invalid strings (e.g. empty or malformed env data).
         $jobs = [int](Get-JobCountForBuild)
 
@@ -138,7 +144,7 @@ if(-not $DryRun) {
         }
     }
 
-    if($LASTEXITCODE -ne 0) { throw "CMake build failed with exit code $LASTEXITCODE" }
+    if ($LASTEXITCODE -ne 0) { throw "CMake build failed with exit code $LASTEXITCODE" }
 
     Write-Host "Build complete: $BuildDir" -ForegroundColor Green
 }

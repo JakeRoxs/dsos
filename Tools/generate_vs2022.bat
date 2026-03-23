@@ -24,7 +24,15 @@ if not exist "%CMakeExePath%" (
 
 echo Using CMake executable: %CMakeExePath%
 
-echo Generating %RootPath%
-echo %CMakeExePath% -S %RootPath% -B %BuildPath%
+REM Optional: override the CMake generator via the GENERATOR environment variable.
+REM If GENERATOR is not set, default to the Visual Studio 17 2022 generator.
+REM Example: set "GENERATOR=Ninja" before running this script to generate Ninja build files
+REM (Ninja must be installed and available on PATH or otherwise discoverable by CMake).
+if "%GENERATOR%"=="" (
+    set "GENERATOR=Visual Studio 17 2022"
+)
 
-"%CMakeExePath%" -S "%RootPath%" -B "%BuildPath%" -G "Visual Studio 17 2022"
+echo Generating %RootPath%
+echo %CMakeExePath% -S %RootPath% -B %BuildPath% -G "%GENERATOR%"
+
+"%CMakeExePath%" -S "%RootPath%" -B "%BuildPath%" -G "%GENERATOR%"

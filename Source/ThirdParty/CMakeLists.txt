@@ -221,14 +221,12 @@ else()
     endif()
     if(TARGET civetweb-cpp)
         target_compile_options(civetweb-cpp PRIVATE
-            $<$<OR:$<C_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:Clang>>:-Wno-error=language-extension-token -Wno-language-extension-token>
-            $<$<OR:$<C_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=language-extension-token -Wno-language-extension-token>
+            $<$<OR:$<C_COMPILER_ID:Clang>,$<C_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=language-extension-token -Wno-language-extension-token>
         )
     endif()
     if(TARGET civetweb-c-library)
         target_compile_options(civetweb-c-library PRIVATE
-            $<$<OR:$<C_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:Clang>>:-Wno-error=language-extension-token -Wno-language-extension-token>
-            $<$<OR:$<C_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=language-extension-token -Wno-language-extension-token>
+            $<$<OR:$<C_COMPILER_ID:Clang>,$<C_COMPILER_ID:GNU>,$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:GNU>>:-Wno-error=language-extension-token -Wno-language-extension-token>
         )
     endif()
 endif()
@@ -542,23 +540,48 @@ else()
             set(_openssl_install_dir "${CMAKE_BINARY_DIR}/_deps/openssl-install")
             file(MAKE_DIRECTORY "${_openssl_install_dir}")
 
-            message(STATUS "OpenSSL fetching: verifying required tooling")
-            find_program(_openssl_perl_executable perl)
-            if(_openssl_perl_executable)
-                message(STATUS "Found perl executable: ${_openssl_perl_executable}")
+            if(WIN32)
+                set(_openssl_crypto_lib_path "${_openssl_install_dir}/lib/libcrypto.lib")
+                set(_openssl_ssl_lib_path "${_openssl_install_dir}/lib/libssl.lib")
             else()
-                if(WIN32 AND DSOS_OPENSSL_BOOTSTRAP_PERL)
-                    message(STATUS "Perl missing, but DSOS_OPENSSL_BOOTSTRAP_PERL is enabled; falling back to bootstrap path check.")
-                else()
-                    message(FATAL_ERROR "Perl is required for OpenSSL fetched source build. Install Strawberry Perl, set DSOS_OPENSSL_SOURCE_DIR to a local OpenSSL tree, or set DSOS_OPENSSL_BOOTSTRAP_PERL=ON on Windows.")
-                endif()
+                set(_openssl_crypto_lib_path "${_openssl_install_dir}/lib/libcrypto.a")
+                set(_openssl_ssl_lib_path "${_openssl_install_dir}/lib/libssl.a")
             endif()
 
-            set(_openssl_need_nmake TRUE)
-            if(CMAKE_GENERATOR MATCHES "Ninja")
-                set(_openssl_need_nmake FALSE)
-                message(STATUS "Ninja generator detected; nmake.exe check is optional for non-nmake generators.")
-            endif()
+            if(EXISTS "${_openssl_crypto_lib_path}" AND EXISTS "${_openssl_ssl_lib_path}")
+                message(STATUS "OpenSSL already installed in ${_openssl_install_dir}; skipping source build.")
+                add_library(openssl_ssl STATIC IMPORTED GLOBAL)
+                set_target_properties(openssl_ssl PROPERTIES IMPORTED_LOCATION "${_openssl_ssl_lib_path}")
+
+                add_library(openssl_crypto STATIC IMPORTED GLOBAL)
+                set_target_properties(openssl_crypto PROPERTIES IMPORTED_LOCATION "${_openssl_crypto_lib_path}")
+
+                add_library(openssl INTERFACE)
+                target_include_directories(openssl INTERFACE "${_openssl_install_dir}/include")
+                target_link_libraries(openssl INTERFACE openssl_crypto openssl_ssl)
+                dsos_append_dep_status("openssl: cached-source-build")
+            else()
+                message(STATUS "OpenSSL fetching: verifying required tooling")
+                find_program(_openssl_perl_executable perl)
+                if(_openssl_perl_executable)
+                    message(STATUS "Found perl executable: ${_openssl_perl_executable}")
+                else()
+                    if(WIN32 AND DSOS_OPENSSL_BOOTSTRAP_PERL)
+                        message(STATUS "Perl missing, but DSOS_OPENSSL_BOOTSTRAP_PERL is enabled; falling back to bootstrap path check.")
+                    else()
+                        message(FATAL_ERROR "Perl is required for OpenSSL fetched source build. Install Strawberry Perl, set DSOS_OPENSSL_SOURCE_DIR to a local OpenSSL tree, or set DSOS_OPENSSL_BOOTSTRAP_PERL=ON on Windows.")
+                    endif()
+                endif()
+
+                if(WIN32)
+                    set(_openssl_need_nmake TRUE)
+                    if(CMAKE_GENERATOR MATCHES "Ninja")
+                        set(_openssl_need_nmake FALSE)
+                        message(STATUS "Ninja generator detected; nmake.exe check is optional for non-nmake generators.")
+                    endif()
+                else()
+                    set(_openssl_need_nmake FALSE)
+                endif()
 
             if(_openssl_need_nmake)
                 find_program(_openssl_nmake_executable nmake.exe)
@@ -567,7 +590,7 @@ else()
                 else()
                     message(WARNING "nmake.exe not found in PATH; required to build OpenSSL on Windows using NMake. Try Developer Command Prompt or install Visual Studio Build Tools.")
                 endif()
-            else()
+            elseif(WIN32)
                 message(STATUS "Skipping nmake.exe requirement for Ninja generator. OpenSSL source build may still require an appropriate toolchain.")
             endif()
 
@@ -658,32 +681,43 @@ else()
                 endif()
             endif()
 
-            if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-                set(_openssl_configure_target "VC-WIN64A")
-            else()
-                set(_openssl_configure_target "VC-WIN32")
-            endif()
+            if(WIN32)
+                if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                    set(_openssl_configure_target "VC-WIN64A")
+                else()
+                    set(_openssl_configure_target "VC-WIN32")
+                endif()
 
-            # Detect vcvars for accurate MSVC toolchain environment inside external project commands.
-            set(_openssl_vcvarsall "")
-            if(DEFINED ENV{VSINSTALLDIR})
-                set(_openssl_vcvarsall "$ENV{VSINSTALLDIR}/VC/Auxiliary/Build/vcvars64.bat")
-            else()
-                get_filename_component(_cl_bin_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
-                # Expected: .../VC/Tools/MSVC/<ver>/bin/Hostx64/x64
-                get_filename_component(_msvc_tools_dir "${_cl_bin_dir}" DIRECTORY 4)
-                set(_openssl_vcvarsall "${_msvc_tools_dir}/VC/Auxiliary/Build/vcvars64.bat")
-            endif()
-
-            if(NOT EXISTS "${_openssl_vcvarsall}")
-                message(WARNING "vcvars64.bat not found at ${_openssl_vcvarsall}, using existing environment for OpenSSL build. Ensure cl.exe and nmake.exe are on PATH.")
+                # Detect vcvars for accurate MSVC toolchain environment inside external project commands.
                 set(_openssl_vcvarsall "")
-            endif()
+                if(DEFINED ENV{VSINSTALLDIR})
+                    set(_openssl_vcvarsall "$ENV{VSINSTALLDIR}/VC/Auxiliary/Build/vcvars64.bat")
+                else()
+                    get_filename_component(_cl_bin_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+                    # Expected: .../VC/Tools/MSVC/<ver>/bin/Hostx64/x64
+                    get_filename_component(_msvc_tools_dir "${_cl_bin_dir}" DIRECTORY 4)
+                    set(_openssl_vcvarsall "${_msvc_tools_dir}/VC/Auxiliary/Build/vcvars64.bat")
+                endif()
 
-            if(_openssl_vcvarsall)
-                file(TO_CMAKE_PATH "${_openssl_vcvarsall}" _openssl_vcvarsall_cmake)
-                message(STATUS "OpenSSL vcvars path (raw): ${_openssl_vcvarsall}")
-                message(STATUS "OpenSSL vcvars path (cmake): ${_openssl_vcvarsall_cmake}")
+                if(NOT EXISTS "${_openssl_vcvarsall}")
+                    message(WARNING "vcvars64.bat not found at ${_openssl_vcvarsall}, using existing environment for OpenSSL build. Ensure cl.exe and nmake.exe are on PATH.")
+                    set(_openssl_vcvarsall "")
+                endif()
+
+                if(_openssl_vcvarsall)
+                    file(TO_CMAKE_PATH "${_openssl_vcvarsall}" _openssl_vcvarsall_cmake)
+                    message(STATUS "OpenSSL vcvars path (raw): ${_openssl_vcvarsall}")
+                    message(STATUS "OpenSSL vcvars path (cmake): ${_openssl_vcvarsall_cmake}")
+                endif()
+            else()
+                if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+                    set(_openssl_configure_target "linux-x86_64")
+                else()
+                    set(_openssl_configure_target "linux-elf")
+                endif()
+
+                # On non-Windows, we do not need vcvars/nmake; standard build tool flow is used.
+                set(_openssl_vcvarsall "")
             endif()
 
             # Detect an available nmake.exe, either from PATH or the same MSVC bin tree as cl.exe.
@@ -709,31 +743,57 @@ else()
             endif()
 
             set(_openssl_script_dir "${CMAKE_BINARY_DIR}/_deps")
-            set(_openssl_configure_script "${_openssl_script_dir}/openssl_configure.bat")
-            set(_openssl_build_script "${_openssl_script_dir}/openssl_build.bat")
-            set(_openssl_install_script "${_openssl_script_dir}/openssl_install.bat")
+            if(WIN32)
+                set(_openssl_configure_script "${_openssl_script_dir}/openssl_configure.bat")
+                set(_openssl_build_script "${_openssl_script_dir}/openssl_build.bat")
+                set(_openssl_install_script "${_openssl_script_dir}/openssl_install.bat")
 
-            file(WRITE "${_openssl_configure_script}" "@echo off\r\n")
-            if(_openssl_vcvarsall)
-                file(APPEND "${_openssl_configure_script}" "call \"${_openssl_vcvarsall_cmake}\"\r\n")
+                file(WRITE "${_openssl_configure_script}" "@echo off\r\n")
+                if(_openssl_vcvarsall)
+                    file(APPEND "${_openssl_configure_script}" "call \"${_openssl_vcvarsall_cmake}\"\r\n")
+                endif()
+                file(APPEND "${_openssl_configure_script}" "\"${_openssl_perl_executable}\" Configure ${_openssl_configure_target} no-shared no-tests no-asm --prefix=\"${_openssl_install_dir}\" --openssldir=\"${_openssl_install_dir}/ssl\"\r\n")
+
+                file(WRITE "${_openssl_build_script}" "@echo off\r\n")
+                if(_openssl_vcvarsall)
+                    file(APPEND "${_openssl_build_script}" "call \"${_openssl_vcvarsall_cmake}\"\r\n")
+                endif()
+                file(APPEND "${_openssl_build_script}" "\"${_openssl_nmake_executable}\"\r\n")
+
+                file(WRITE "${_openssl_install_script}" "@echo off\r\n")
+                if(_openssl_vcvarsall)
+                    file(APPEND "${_openssl_install_script}" "call \"${_openssl_vcvarsall_cmake}\"\r\n")
+                endif()
+                file(APPEND "${_openssl_install_script}" "\"${_openssl_nmake_executable}\" install_dev\r\n")
+
+                set(_openssl_configure_cmd "${_openssl_configure_script}")
+                set(_openssl_build_cmd "${_openssl_build_script}")
+                set(_openssl_install_cmd "${_openssl_install_script}")
+            else()
+                set(_openssl_configure_script "${_openssl_script_dir}/openssl_configure.sh")
+                set(_openssl_build_script "${_openssl_script_dir}/openssl_build.sh")
+                set(_openssl_install_script "${_openssl_script_dir}/openssl_install.sh")
+
+                set(_openssl_make_jobs "$ENV{CMAKE_BUILD_PARALLEL_LEVEL}")
+                if(NOT _openssl_make_jobs)
+                    include(ProcessorCount)
+                    ProcessorCount(_openssl_make_jobs)
+                endif()
+
+                if(NOT _openssl_make_jobs OR _openssl_make_jobs LESS 1)
+                    set(_openssl_make_jobs 2)
+                endif()
+
+                file(WRITE "${_openssl_configure_script}" "#!/usr/bin/env bash\nset -euo pipefail\ncd \"${_openssl_source_dir}\"\n\"${_openssl_perl_executable}\" ./Configure ${_openssl_configure_target} no-shared no-tests no-asm --prefix=\"${_openssl_install_dir}\" --openssldir=\"${_openssl_install_dir}/ssl\"\n")
+
+                file(WRITE "${_openssl_build_script}" "#!/usr/bin/env bash\nset -euo pipefail\ncd \"${_openssl_source_dir}\"\nmake -j${_openssl_make_jobs}\n")
+
+                file(WRITE "${_openssl_install_script}" "#!/usr/bin/env bash\nset -euo pipefail\ncd \"${_openssl_source_dir}\"\nmake install_sw\n")
+
+                set(_openssl_configure_cmd "${CMAKE_COMMAND} -E sh \"${_openssl_configure_script}\"")
+                set(_openssl_build_cmd "${CMAKE_COMMAND} -E sh \"${_openssl_build_script}\"")
+                set(_openssl_install_cmd "${CMAKE_COMMAND} -E sh \"${_openssl_install_script}\"")
             endif()
-            file(APPEND "${_openssl_configure_script}" "\"${_openssl_perl_executable}\" Configure ${_openssl_configure_target} no-shared no-tests no-asm --prefix=\"${_openssl_install_dir}\" --openssldir=\"${_openssl_install_dir}/ssl\"\r\n")
-
-            file(WRITE "${_openssl_build_script}" "@echo off\r\n")
-            if(_openssl_vcvarsall)
-                file(APPEND "${_openssl_build_script}" "call \"${_openssl_vcvarsall_cmake}\"\r\n")
-            endif()
-            file(APPEND "${_openssl_build_script}" "\"${_openssl_nmake_executable}\"\r\n")
-
-            file(WRITE "${_openssl_install_script}" "@echo off\r\n")
-            if(_openssl_vcvarsall)
-                file(APPEND "${_openssl_install_script}" "call \"${_openssl_vcvarsall_cmake}\"\r\n")
-            endif()
-            file(APPEND "${_openssl_install_script}" "\"${_openssl_nmake_executable}\" install_dev\r\n")
-
-            set(_openssl_configure_cmd "${_openssl_configure_script}")
-            set(_openssl_build_cmd "${_openssl_build_script}")
-            set(_openssl_install_cmd "${_openssl_install_script}")
 
             ExternalProject_Add(openssl_fetched_build
                 SOURCE_DIR "${_openssl_source_dir}"
@@ -748,13 +808,13 @@ else()
 
             add_library(openssl_ssl STATIC IMPORTED GLOBAL)
             set_target_properties(openssl_ssl PROPERTIES
-                IMPORTED_LOCATION "${_openssl_install_dir}/lib/libssl.lib"
+                IMPORTED_LOCATION "${_openssl_ssl_lib_path}"
             )
             add_dependencies(openssl_ssl openssl_fetched_build)
 
             add_library(openssl_crypto STATIC IMPORTED GLOBAL)
             set_target_properties(openssl_crypto PROPERTIES
-                IMPORTED_LOCATION "${_openssl_install_dir}/lib/libcrypto.lib"
+                IMPORTED_LOCATION "${_openssl_crypto_lib_path}"
             )
             add_dependencies(openssl_crypto openssl_fetched_build)
 
@@ -763,8 +823,9 @@ else()
             target_link_libraries(openssl INTERFACE openssl_crypto openssl_ssl)
             add_dependencies(openssl openssl_fetched_build)
             dsos_append_dep_status("openssl: fetched-source-build")
-        endif()
-endif()
+        endif()  # if(EXISTS _openssl_ssl_lib_path && EXISTS _openssl_crypto_lib_path)
+    endif()      # if(OpenSSL_FOUND)
+endif()          # if(DEFINED DSOS_OPENSSL_SOURCE_DIR && ...)
 
 # Curl
 # When building curl via FetchContent, disable legacy/weak auth mechanisms

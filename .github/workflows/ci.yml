@@ -151,10 +151,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: windows-msbuild
+          - name: windows-ninja
             os: windows-latest
-          - name: linux-make
+            generator: Ninja
+          - name: linux-ninja
             os: ubuntu-latest
+            generator: Ninja
           # Nix builds temporarily disabled
           # - name: nix-gcc
           #   os: ubuntu-latest
@@ -168,7 +170,7 @@ jobs:
         with:
           submodules: recursive
       - name: Cache build artifacts
-        if: matrix.name == 'windows-msbuild' || matrix.name == 'linux-make'
+        if: matrix.name == 'windows-ninja' || matrix.name == 'linux-ninja'
         uses: actions/cache@v5
         with:
           path: |
@@ -179,28 +181,30 @@ jobs:
             ${{ runner.os }}-build-
 
       - name: Clean stale CMake cache (Linux)
-        if: matrix.name == 'linux-make'
+        if: matrix.name == 'linux-ninja'
         shell: bash
         run: |
           rm -f intermediate/make/CMakeCache.txt
           rm -rf intermediate/make/CMakeFiles
 
       - name: Clean stale CMake cache (Windows)
-        if: matrix.name == 'windows-msbuild'
+        if: matrix.name == 'windows-ninja'
         shell: cmd
         run: |
           if exist intermediate\vs2022\CMakeCache.txt del /f /q intermediate\vs2022\CMakeCache.txt
           if exist intermediate\vs2022\CMakeFiles rmdir /s /q intermediate\vs2022\CMakeFiles
 
-      - name: Generate Solution (Windows)
-        if: matrix.name == 'windows-msbuild'
+      - name: Generate build files (Windows)
+        if: matrix.name == 'windows-ninja'
         shell: cmd
+        env:
+          GENERATOR: Ninja
         run: |
           cd "%GITHUB_WORKSPACE%\Tools"
           "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
 
       - name: Report dependency fetch status (Windows)
-        if: matrix.name == 'windows-msbuild'
+        if: matrix.name == 'windows-ninja'
         shell: cmd
         run: |
           if exist intermediate\vs2022\dependency-fetch-status.txt (
@@ -209,15 +213,8 @@ jobs:
             echo "(dependency-fetch-status.txt not found)"
           )
 
-      - name: Generate Solution (Linux)
-        if: matrix.name == 'linux-make'
-        shell: bash
-        run: |
-          cd "${{ github.workspace }}/Tools"
-          "${{ github.workspace }}/Tools/generate_make_release.sh"
-
       - name: Report dependency fetch status (Linux)
-        if: matrix.name == 'linux-make'
+        if: matrix.name == 'linux-ninja'
         shell: bash
         run: |
           status_file="${{ github.workspace }}/intermediate/make/dependency-fetch-status.txt"
@@ -228,33 +225,39 @@ jobs:
           fi
 
       - name: Add MSBuild to PATH
-        if: matrix.name == 'windows-msbuild'
+        if: matrix.name == 'windows-ninja'
         uses: microsoft/setup-msbuild@v3
 
       - name: Restore NuGet packages (Windows)
-        if: matrix.name == 'windows-msbuild'
+        if: matrix.name == 'windows-ninja'
         working-directory: ${{github.workspace}}
         run: dotnet restore ${{env.SOLUTION_FILE_PATH}}
 
-      - name: Build on Windows
-        if: matrix.name == 'windows-msbuild'
-        working-directory: ${{github.workspace}}
-        run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Build
-
+      - name: Build on Windows (Ninja)
+        if: matrix.name == 'windows-ninja'
+        working-directory: ${{github.workspace}}/intermediate/vs2022
+        run: ninja -j %NUMBER_OF_PROCESSORS%
       - name: Install required development packages (Linux)
-        if: matrix.name == 'linux-make'
+        if: matrix.name == 'linux-ninja'
         run: |
           set -euxo pipefail
           sudo apt-get update
-          # Required for building OpenSSL/curl/zlib/sqlite, and cmake to generate makefiles.
-          sudo apt-get install -y cmake libssl-dev zlib1g-dev libsqlite3-dev pkg-config
+          # Required for building OpenSSL/curl/zlib/sqlite, and cmake to generate build files.
+          sudo apt-get install -y cmake ninja-build libssl-dev zlib1g-dev libsqlite3-dev pkg-config
           # UUID is used by the project; different distros name it differently.
           sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
-      - name: Build on Linux
-        if: matrix.name == 'linux-make'
+      - name: Generate Solution (Linux)
+        if: matrix.name == 'linux-ninja'
+        shell: bash
+        run: |
+          cd "${{ github.workspace }}/Tools"
+          GENERATOR=Ninja "${{ github.workspace }}/Tools/generate_make_release.sh"
+
+      - name: Build on Linux (Ninja)
+        if: matrix.name == 'linux-ninja'
         working-directory: ${{github.workspace}}/intermediate/make
-        run: make -j$(nproc)
+        run: ninja -j$(nproc)
 
       - name: Install Nix
         if: startsWith(matrix.name, 'nix-')

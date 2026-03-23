@@ -17,5 +17,9 @@ fi
 echo "Generating $RootPath"
 echo "$CMakeExePath -S $RootPath -B $BuildPath"
 
-$CMakeExePath -S $RootPath -B $BuildPath -G "Unix Makefiles" \
+# Allow overriding generator via environment variable, default to Ninja for faster builds.
+GENERATOR="${GENERATOR:-Ninja}"
+echo "$CMakeExePath -S $RootPath -B $BuildPath -G \"$GENERATOR\""
+
+$CMakeExePath -S $RootPath -B $BuildPath -G "$GENERATOR" \
   -DCMAKE_BUILD_TYPE=Release
