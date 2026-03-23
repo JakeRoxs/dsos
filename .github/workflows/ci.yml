@@ -236,7 +236,13 @@ jobs:
       - name: Build on Windows (Ninja)
         if: matrix.name == 'windows-ninja'
         working-directory: ${{github.workspace}}/intermediate/vs2022
-        run: ninja -j %NUMBER_OF_PROCESSORS%
+        run: |
+          $jobs = 0
+          if ([int]::TryParse($Env:NUMBER_OF_PROCESSORS, [ref]$jobs) -and $jobs -gt 0) {
+            ninja -j $jobs
+          } else {
+            ninja
+          }
       - name: Install required development packages (Linux)
         if: matrix.name == 'linux-ninja'
         run: |
