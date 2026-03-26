@@ -115,8 +115,11 @@ jobs:
 
       - name: Restore Dependencies (Windows)
         if: matrix.platform == 'windows'
-        working-directory: ${{github.workspace}}
-        run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Restore
+        working-directory: ${{ github.workspace }}
+        shell: cmd
+        run: |
+          echo Restoring dependencies from %GITHUB_WORKSPACE%\\intermediate\\vs2022\\ds3os.sln
+          msbuild /m /p:Configuration=%BUILD_CONFIGURATION% "%GITHUB_WORKSPACE%\\intermediate\\vs2022\\ds3os.sln" /t:Restore
 
       - name: Build on Windows (Ninja)
         if: matrix.platform == 'windows'

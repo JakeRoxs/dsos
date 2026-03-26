@@ -28,6 +28,12 @@ param (
     $Repo,
 
     [switch]
+    $Latest,
+
+    [string]
+    $Workflow,
+
+    [switch]
     $Json,
 
     [string]
@@ -106,6 +112,51 @@ function Resolve-Repo {
     return $null
 }
 
+function Is-RepoIdentifier {
+    param([string]$value)
+    return -not [string]::IsNullOrWhiteSpace($value) -and ($value -match '^[^/]+/[^/]+$')
+}
+
+function Resolve-LatestRun {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Repo,
+        [string]$Workflow
+    )
+
+    if (-not $Repo) {
+        Fail 'Cannot resolve latest run: repository is not defined.'
+    }
+
+    $args = @('--repo', $Repo, '--limit', '1', '--json', 'databaseId')
+    if ($Workflow) {
+        $args += @('--workflow', $Workflow)
+    }
+
+    Write-Verbose "Resolving latest run via gh run list ($([string]::Join(' ', $args)))"
+    $raw = gh run list @args 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        Fail "gh run list failed (exit $LASTEXITCODE): $raw"
+    }
+
+    try {
+        $runs = $raw | ConvertFrom-Json
+    }
+    catch {
+        Fail "Failed parsing gh run list output as JSON: $($_)"
+    }
+
+    if (-not $runs -or $runs.Count -eq 0) {
+        Fail "No runs found for workflow '$Workflow' in repository '$Repo'."
+    }
+
+    if (-not $runs[0].databaseId) {
+        Fail "Latest run entry does not include a databaseId field; cannot resolve run id."
+    }
+
+    return $runs[0].databaseId
+}
+
 function Get-RunJson {
     param(
         [Parameter(Mandatory = $true)]
@@ -114,7 +165,8 @@ function Get-RunJson {
         [string]$Repo
     )
 
-    $fields = 'id,status,conclusion,event,createdAt,updatedAt,headBranch,headSha,workflow,name,url,jobs'
+    # gh run view does not expose 'id', use databaseId (alias to run_id) instead.
+    $fields = 'databaseId,status,conclusion,event,attempt,createdAt,updatedAt,headBranch,headSha,workflowName,workflowDatabaseId,displayTitle,url,jobs'
 
     Write-Verbose "Fetching run metadata for run ID '$RunId' in repo '$Repo'"
 
@@ -141,8 +193,8 @@ function Get-RunJson {
     if ($Repo) {
         Write-Warning "gh run view failed; trying fallback to gh api for repo $Repo"
         try {
-            Write-Verbose "gh api repos/$Repo/actions/runs/$RunId --jq '{ id, status, conclusion, event, created_at, updated_at, head_branch, head_sha, workflow_id, name, html_url, jobs }'"
-            $result = gh api "repos/$Repo/actions/runs/$RunId" --jq '{ id, status, conclusion, event, created_at, updated_at, head_branch, head_sha, workflow_id, name, html_url, jobs }' 2>&1 | Out-String
+            Write-Verbose "gh api repos/$Repo/actions/runs/$RunId --jq '{ id, status, conclusion, event, attempt, created_at, updated_at, head_branch, head_sha, workflow_id, workflow_name, workflow_database_id, display_title, name, html_url, jobs }'"
+            $result = gh api "repos/$Repo/actions/runs/$RunId" --jq '{ id, status, conclusion, event, attempt, created_at, updated_at, head_branch, head_sha, workflow_id, workflow_name, workflow_database_id, display_title, name, html_url, jobs }' 2>&1 | Out-String
             if ($LASTEXITCODE -eq 0 -and $result.Trim()) {
                 return $result
             }
@@ -216,8 +268,19 @@ function ConvertTo-RunFields {
     $updatedAt = Get-ObjectProperty -Object $Run -PropertyName 'updatedAt'
     if (-not $updatedAt) { $updatedAt = Get-ObjectProperty -Object $Run -PropertyName 'updated_at' }
 
+    $attempt = Get-ObjectProperty -Object $Run -PropertyName 'attempt'
+
     $workflow = Get-ObjectProperty -Object $Run -PropertyName 'workflow'
     if (-not $workflow) { $workflow = Get-ObjectProperty -Object $Run -PropertyName 'workflow_id' }
+
+    $workflowName = Get-ObjectProperty -Object $Run -PropertyName 'workflowName'
+    if (-not $workflowName) { $workflowName = Get-ObjectProperty -Object $Run -PropertyName 'workflow_name' }
+
+    $workflowDatabaseId = Get-ObjectProperty -Object $Run -PropertyName 'workflowDatabaseId'
+    if (-not $workflowDatabaseId) { $workflowDatabaseId = Get-ObjectProperty -Object $Run -PropertyName 'workflow_database_id' }
+
+    $displayTitle = Get-ObjectProperty -Object $Run -PropertyName 'displayTitle'
+    if (-not $displayTitle) { $displayTitle = Get-ObjectProperty -Object $Run -PropertyName 'display_title' }
 
     $url = Get-ObjectProperty -Object $Run -PropertyName 'url'
     if (-not $url) { $url = Get-ObjectProperty -Object $Run -PropertyName 'html_url' }
@@ -228,19 +291,26 @@ function ConvertTo-RunFields {
     $headSha = Get-ObjectProperty -Object $Run -PropertyName 'headSha'
     if (-not $headSha) { $headSha = Get-ObjectProperty -Object $Run -PropertyName 'head_sha' }
 
+    $runId = Get-ObjectProperty -Object $Run -PropertyName 'id'
+    if (-not $runId) { $runId = Get-ObjectProperty -Object $Run -PropertyName 'databaseId' }
+
     return [pscustomobject]@{
-        id          = Get-ObjectProperty -Object $Run -PropertyName 'id'
-        status      = Get-ObjectProperty -Object $Run -PropertyName 'status'
-        conclusion  = Get-ObjectProperty -Object $Run -PropertyName 'conclusion'
-        event       = Get-ObjectProperty -Object $Run -PropertyName 'event'
-        created_at  = $createdAt
-        updated_at  = $updatedAt
-        workflow    = $workflow
-        name        = Get-ObjectProperty -Object $Run -PropertyName 'name'
-        url         = $url
-        head_branch = $headBranch
-        head_sha    = $headSha
-        jobs        = Get-ObjectProperty -Object $Run -PropertyName 'jobs'
+        id                   = $runId
+        status               = Get-ObjectProperty -Object $Run -PropertyName 'status'
+        conclusion           = Get-ObjectProperty -Object $Run -PropertyName 'conclusion'
+        event                = Get-ObjectProperty -Object $Run -PropertyName 'event'
+        attempt              = $attempt
+        created_at           = $createdAt
+        updated_at           = $updatedAt
+        workflow             = $workflow
+        workflow_name        = $workflowName
+        workflow_database_id = $workflowDatabaseId
+        display_title        = $displayTitle
+        name                 = Get-ObjectProperty -Object $Run -PropertyName 'name'
+        url                  = $url
+        head_branch          = $headBranch
+        head_sha             = $headSha
+        jobs                 = Get-ObjectProperty -Object $Run -PropertyName 'jobs'
     }
 }
 
@@ -248,9 +318,30 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     Fail "Missing GitHub CLI (gh). Install from https://cli.github.com/ and run 'gh auth login'."
 }
 
+$rawRepoInput = $Repo
 $Repo = Resolve-Repo -Repo $Repo
 if (-not $Repo) {
     Fail "Repository not specified. Use --repo owner/repo or run from a git repository with origin remote, or set GITHUB_REPOSITORY."
+}
+
+if ($RunId -eq 'latest-release') {
+    $Latest = $true
+    $RunId = 'latest'
+    $Workflow = 'release'
+}
+
+if ($Latest -or $RunId -eq 'latest') {
+    if (-not $Workflow -and $rawRepoInput -and -not (Is-RepoIdentifier $rawRepoInput)) {
+        # Interpret second positional value as workflow name when using syntax: latest <workflow>
+        $Workflow = $rawRepoInput
+    }
+
+    $RunId = Resolve-LatestRun -Repo $Repo -Workflow $Workflow
+    if (-not $RunId) {
+        Fail "Unable to resolve the latest run for workflow '$Workflow' in repo '$Repo'."
+    }
+
+    Write-Verbose "Using resolved run ID $RunId for latest workflow run."
 }
 
 $runJson = Get-RunJson -RunId $RunId -Repo $Repo
@@ -399,6 +490,10 @@ $lines.Add((ToonLine -k 'run_id' -v $normalizedRun.id))
 $lines.Add((ToonLine -k 'status' -v $normalizedRun.status))
 $lines.Add((ToonLine -k 'conclusion' -v $normalizedRun.conclusion))
 $lines.Add((ToonLine -k 'event' -v $normalizedRun.event))
+$lines.Add((ToonLine -k 'attempt' -v $normalizedRun.attempt))
+$lines.Add((ToonLine -k 'workflow_name' -v $normalizedRun.workflow_name))
+$lines.Add((ToonLine -k 'workflow_database_id' -v $normalizedRun.workflow_database_id))
+$lines.Add((ToonLine -k 'display_title' -v $normalizedRun.display_title))
 $lines.Add((ToonLine -k 'created_at' -v $normalizedRun.created_at))
 $lines.Add((ToonLine -k 'updated_at' -v $normalizedRun.updated_at))
 $lines.Add((ToonLine -k 'workflow' -v $normalizedRun.workflow))
