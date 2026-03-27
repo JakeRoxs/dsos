@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     Log(R"--(\____/ .___/\___/_/ /_/   /____/\___/_/    |___/\___/_/       )--");
     Log(R"--(    /_/                                                       )--");
     Log("");
-    Log("https://github.com/jakeroxs/dsAQAAAAAAAAos");
+    Log("https://github.com/jakeroxs/dsos");
     Log("");
 
 #ifdef DEBUG_TEST
