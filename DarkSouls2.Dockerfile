@@ -1,5 +1,5 @@
 # build stage based on ubuntu LTS
-FROM ubuntu@sha256:d1e2e92c075e5ca139d51a140fff46f84315c0fdce203eab2807c7e495eff4f9 AS build
+FROM ubuntu@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c AS build
 
 # install build dependencies without recommendations and clean apt cache in same layer
 RUN apt-get update && \
@@ -21,13 +21,13 @@ RUN if [ ! -d /build/bin/x64_release ]; then \
       echo "Error: canonical build output directory /build/bin/x64_release not found"; exit 1; \
     fi
 
-FROM steamcmd/steamcmd:latest@sha256:e5d7e8acdef9d99dbeff206df05b3762d3108a5ce58315be488ae199abca7b09 AS steam
+FROM steamcmd/steamcmd:latest@sha256:b2f9129d051bc9e776fa3603de413b714df8bae27e7e7711b206995b8021557d AS steam
 
 # Make steamcmd download steam client libraries so we can copy them later.
 RUN steamcmd +login anonymous +quit
 
 # runtime stage – also based on ubuntu LTS; allow STEAM_APP_ID to be overridden
-FROM ubuntu@sha256:d1e2e92c075e5ca139d51a140fff46f84315c0fdce203eab2807c7e495eff4f9 AS runtime
+FROM ubuntu@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c AS runtime
 
 # default Steam AppID can be overridden with --build-arg STEAM_APP_ID=xxxx
 ARG STEAM_APP_ID=335300
