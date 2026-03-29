@@ -33,6 +33,13 @@
 
 #include "ThirdParty/nlohmann/json.hpp"
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef _WINSOCKAPI_
+#define _WINSOCKAPI_
+#endif
+
 #include <Windows.h>
 
 // Use different save file.

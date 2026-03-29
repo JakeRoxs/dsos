@@ -258,7 +258,7 @@ bool AuthClient::Poll()
                     }
                     else
                     {
-                        LogS(GetName().c_str(), "Client steam ticket authenticated successfully in %.2f seconds.");
+                        LogS(GetName().c_str(), "Client steam ticket authenticated successfully in %.2f seconds.", Elapsed);
                     }
                 }
 

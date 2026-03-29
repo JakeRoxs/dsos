@@ -4,7 +4,8 @@ FROM ubuntu@sha256:d1e2e92c075e5ca139d51a140fff46f84315c0fdce203eab2807c7e495eff
 # install build dependencies without recommendations and clean apt cache in same layer
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -q -y --no-install-recommends \
-        g++ make curl zip unzip tar binutils cmake git yasm libuuid1 uuid-dev uuid-runtime && \
+        g++ make curl zip unzip tar binutils cmake git yasm ninja-build pkg-config \
+        libssl-dev zlib1g-dev libpcre3-dev libuuid1 uuid-dev uuid-runtime ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 COPY ./ /build
@@ -13,7 +14,12 @@ WORKDIR /build/Tools
 RUN sed -i 's/\r$//' ./generate_make_release.sh && \
     ./generate_make_release.sh
 WORKDIR /build
-RUN cd intermediate/make && make -j$(nproc || echo 4)
+RUN cd intermediate/make && (if [ -f build.ninja ]; then ninja -j$(nproc || echo 4); else make -j$(nproc || echo 4); fi)
+
+# Ensure canonical output exists before transitioning to runtime stage
+RUN if [ ! -d /build/bin/x64_release ]; then \
+      echo "Error: canonical build output directory /build/bin/x64_release not found"; exit 1; \
+    fi
 
 FROM steamcmd/steamcmd:latest@sha256:e5d7e8acdef9d99dbeff206df05b3762d3108a5ce58315be488ae199abca7b09 AS steam
 
@@ -54,7 +60,15 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 ENV STEAM_APP_ID=${STEAM_APP_ID}
 RUN echo "$STEAM_APP_ID" >> /opt/ds2os/steam_appid.txt
 
-COPY --from=build /build/bin/x64_release/ /opt/ds2os/
+# Copy only the built runtime outputs from the build stage into the runtime image.
+# Avoid copying the full /build tree to keep image size small.
+COPY --from=build /build/bin/x64_release/. /opt/ds2os/
+
+# Optional debug output during build (comment out in production):
+# RUN ls -al /opt/ds2os && find /opt/ds2os -maxdepth 4 -type f -print
+
+# Uncomment this to preserve full /build for inspection.
+# COPY --from=build /build /build
 COPY --from=steam /root/.local/share/Steam/steamcmd/linux64/steamclient.so /opt/ds2os/steamclient.so
 
 ENV LD_LIBRARY_PATH="/opt/ds2os"

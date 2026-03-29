@@ -40,10 +40,33 @@ struct Frpg2Message;
 class Client
 {
 public:
+    struct ClientConfig
+    {
+        std::string ServerIP = "127.0.0.1";
+        int ServerPort = 50050;
+        std::string ServerPublicKey =
+            "-----BEGIN RSA PUBLIC KEY-----\n"
+            "MIIBCgKCAQEAtSGwOqmYyMldifSB99oqPc4jnWbOvtU9441/anExQtajz8AGA+V2\n"
+            "uq9s6PNGZCkCCFYlxq7iXr+PTrL20irkqyNAX8Fjub+hckwBFtOGWOf2/ENJk9A8\n"
+            "uyhfpmOVZ9+qB76ZcdwdSVWrCmzlgKjPU2RVz0moE1CHFtBr6gfdG+LlUBUEHr1X\n"
+            "lnMlhNdRni+9Ju8X3Mt/EEdS++F+1s8/9VVMdf7RCPru09rR2fc9sD72DB7d8WeH\n"
+            "MJssXGmcb6sZsU0u/3zNS8lGatDLivSwRrxeOUeUCIgu8ZrSTq0fCnHjUZ2WU6im\n"
+            "Df1boE+E786Rf9cyK6I61zSUDMaqke7f8QIDAQAB\n"
+            "-----END RSA PUBLIC KEY-----\n";
+        bool DisablePersistentData = false;
+        size_t InstanceId = 0;
+    };
+
     Client();
+    explicit Client(const ClientConfig& config);
     ~Client();
 
-    bool Init(bool DisablePersistentData = false, size_t InstanceId = 0);
+    // Initialize the instance using the current ClientConfig values.
+    bool Init();
+
+    // Allows callers to override the disable-persistent/instance-id values before Init.
+    void OverrideConfig(bool disablePersistentData, size_t instanceId);
+
     bool Term();
     void RunUntilQuit();
 
@@ -141,8 +164,7 @@ private:
     std::filesystem::path SavedPath;
     std::filesystem::path DatabasePath;
 
-    bool DisablePersistentData = false;
-    size_t InstanceId = 0;
+    ClientConfig Config;
 
     std::string ClientStreamId = "";
     int ClientAppVersion = 115;
@@ -167,11 +189,6 @@ private:
     int GameServerPort = 0;
     uint32_t GamePlayerId = 0;
 
-    int ServerPort = 50050;
-    //std::string ServerIP = "fdp-steam-ope-login.fromsoftware-game.net";
-    //std::string ServerPublicKey = "-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEA1Nuliw8Rvkt40+0OKoW0JpuSIU/ErQwjzRicZV9JDrCikiTIqoAh\nvBj3DcHwGX1d6T5PY27E4SHa24eRxDetMPEYKeclUeJ0jB07lCtH9Y0zMWl1PMfo\nlIgcm5VKfz+Ua+Ny6klgx1y3ODxMS9g0k11t1WsFtccr464lfP4i1Fgz1/C2Jmgu\n7EV+YdIYkOqT+NJtJG5Z75guq/rTQ85/tVuBKa9dvGIaAqG+nTVlJ2+vzKhjPVXJ\n6AwzWdAbG802uzNC9pk+LEQ+YZXCZSHPMNKz6IwXjlagqDxl2w0rg6dEEFxRY0lm\nS0nqh01eO9pYZA2k0TmpeWHhrKJrnvrKFwIDAQAB\n-----END RSA PUBLIC KEY-----\n";
-
-    std::string ServerIP = "127.0.0.1";
-    std::string ServerPublicKey = "-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAtSGwOqmYyMldifSB99oqPc4jnWbOvtU9441/anExQtajz8AGA+V2\nuq9s6PNGZCkCCFYlxq7iXr+PTrL20irkqyNAX8Fjub+hckwBFtOGWOf2/ENJk9A8\nuyhfpmOVZ9+qB76ZcdwdSVWrCmzlgKjPU2RVz0moE1CHFtBr6gfdG+LlUBUEHr1X\nlnMlhNdRni+9Ju8X3Mt/EEdS++F+1s8/9VVMdf7RCPru09rR2fc9sD72DB7d8WeH\nMJssXGmcb6sZsU0u/3zNS8lGatDLivSwRrxeOUeUCIgu8ZrSTq0fCnHjUZ2WU6im\nDf1boE+E786Rf9cyK6I61zSUDMaqke7f8QIDAQAB\n-----END RSA PUBLIC KEY-----\n";
-
+    // Server connection configuration values are now stored in Config:
+    // Config.ServerIP, Config.ServerPort, Config.ServerPublicKey, Config.DisablePersistentData, Config.InstanceId
 };

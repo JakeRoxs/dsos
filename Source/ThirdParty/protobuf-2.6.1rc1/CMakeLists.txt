@@ -63,6 +63,9 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES} ${PLATFORM_SOURCES})
 
 if (UNIX)
     target_link_libraries(${PROJECT_NAME} Threads::Threads)
+    # Avoid GCC/Clang deprecation warnings in old protobuf code
+    # from std::iterator (deprecated in C++17+).
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations -Wno-deprecated-copy)
 endif()
 
 if (UNIX)

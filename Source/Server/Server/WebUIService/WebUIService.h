@@ -11,8 +11,8 @@
 
 #include "Server/Service.h"
 
-#include "ThirdParty/civetweb/include/civetweb.h"
-#include "ThirdParty/civetweb/include/CivetServer.h"
+#include <civetweb.h>
+#include <CivetServer.h>
 
 #include <memory>
 #include <vector>

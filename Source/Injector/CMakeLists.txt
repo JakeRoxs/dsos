@@ -49,7 +49,22 @@ enable_testing()
 foreach(target IN ITEMS InjectorCore ${PROJECT_NAME})
     target_include_directories(${target} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/../")
 
-    target_compile_definitions(${target} PRIVATE -D_CRT_SECURE_NO_WARNINGS -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
+    if(WIN32)
+        target_compile_definitions(${target} PRIVATE
+            _CRT_SECURE_NO_WARNINGS
+            _WINSOCK_DEPRECATED_NO_WARNINGS
+            _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+            WIN32_LEAN_AND_MEAN
+            NOMINMAX
+            _WINSOCKAPI_
+            _WIN32_WINNT=0x0A00
+        )
+    else()
+        target_compile_definitions(${target} PRIVATE
+            _CRT_SECURE_NO_WARNINGS
+            _SILENCE_ALL_CXX17_DEPRECATION_WARNINGS
+        )
+    endif()
     target_link_libraries(${target} PUBLIC Shared detours)
     util_setup_folder_structure(${target} SOURCES "DS3OS")
 endforeach()

@@ -16,8 +16,8 @@
 #include "Shared/Core/Utils/Logging.h"
 #include "Shared/Core/Utils/Strings.h"
 
-#include "ThirdParty/civetweb/include/civetweb.h"
-#include "ThirdParty/civetweb/include/CivetServer.h"
+#include <civetweb.h>
+#include <CivetServer.h>
 
 #include <thread>
 #include <condition_variable>

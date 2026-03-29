@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "start:dev": "nodemon src/index.js",
+    "test": "node --test ./src/test/servers.test.js",
     "package": "rimraf ../../Bin/MasterServer && mkdirp ../../Bin/MasterServer && npx pkg --targets node18-win-x64 -o ../../Bin/MasterServer/MasterServer.exe ./src/index.js"
   },
   "author": "",

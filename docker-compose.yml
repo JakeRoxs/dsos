@@ -101,6 +101,7 @@ services:
   #     - SHARDING_ALLOWLIST=192.168.1.50,192.168.1.51
   #     - MASTER_SERVER_PORT=50020
   #     - MASTER_SERVER_TIMEOUT_MS=240000
+  #     - MASTER_SERVER_WRITE_SECRET=your-secret
   #   restart: unless-stopped
   #   healthcheck:
   #     test: ["CMD-SHELL","curl -fsS http://localhost:50020/api/v1/servers || exit 1"]

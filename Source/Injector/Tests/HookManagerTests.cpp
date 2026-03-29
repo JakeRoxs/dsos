@@ -155,9 +155,10 @@ void RunHookManagerTests()
         DWORD result = manager.InstallAll(context);
         assert(result == static_cast<DWORD>(HookError::Success));
         assert(ptr->Installed);
-        assert(ptr->FoundAOB == std::vector<intptr_t>{0x1234});
-        assert(ptr->FoundString == std::vector<intptr_t>{0x5678});
-        assert(ptr->FoundWideString == std::vector<intptr_t>{0x9ABC});
+
+        assert(ptr->FoundAOB.size() == 1 && ptr->FoundAOB[0] == 0x1234);
+        assert(ptr->FoundString.size() == 1 && ptr->FoundString[0] == 0x5678);
+        assert(ptr->FoundWideString.size() == 1 && ptr->FoundWideString[0] == 0x9ABC);
 
         manager.UninstallAll();
         assert(ptr->Uninstalled);

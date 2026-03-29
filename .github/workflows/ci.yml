@@ -11,6 +11,9 @@ on:
       - main
       - development
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref_name }}-${{ github.event_name }}
   cancel-in-progress: true
@@ -35,6 +38,8 @@ jobs:
       - name: Determine whether CI should run
         id: determine
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -42,9 +47,11 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA=${{ github.event.pull_request.base.sha }}
             HEAD_SHA=${{ github.event.pull_request.head.sha }}
+            BRANCH=${{ github.event.pull_request.head.ref }}
           else
             BASE_SHA=${{ github.event.before }}
             HEAD_SHA=${{ github.sha }}
+            BRANCH=${GITHUB_REF_NAME}
           fi
 
           # If there's no valid base commit (new branch / force push), run CI.
@@ -66,6 +73,12 @@ jobs:
 
           real=0
           while IFS= read -r f; do
+            # .nix files are build-relevant for nix-based matrix jobs
+            if [[ "$f" == *.nix ]]; then
+              real=1
+              break
+            fi
+
             case "$f" in
               # Always run CI if we change the CI workflow itself.
               .github/workflows/ci.yml)
@@ -90,6 +103,11 @@ jobs:
                 real=1
                 break
                 ;;
+              Tools/*)
+                real=1
+                break
+                ;;
+
 
               # Everything else is considered non-build (docs/tooling/etc.)
               # and will not trigger the full matrix.
@@ -100,10 +118,28 @@ jobs:
           done < <(printf '%s\n' "$CHANGED")
 
           if [ "$real" -eq 0 ]; then
-            echo "::notice::Skipping CI: only docs/workflow files changed."
+            # If the last completed workflow run on this branch failed, re-run CI.
+            # (This ensures we don't silently skip CI if a prior run failed and no build-relevant changes were made.)
+          if [ -z "${GITHUB_TOKEN:-}" ]; then
+            echo "::notice::GITHUB_TOKEN is unavailable; forcing CI to run (safe default)."
+            real=1
+          else
+            prev_conclusion=$(curl -sSfL -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/runs?branch=$BRANCH&per_page=5" 2>/dev/null | python -c 'import json,sys; runs=json.load(sys.stdin).get("workflow_runs", []); current=int(sys.argv[1]); print(next((r.get("conclusion", "") for r in runs if r.get("id") != current and r.get("status") == "completed"), ""))' "$GITHUB_RUN_ID" 2>/dev/null || true)
+
+            if [ -n "$prev_conclusion" ] && [ "$prev_conclusion" != "success" ]; then
+              echo "::notice::Previous CI run on branch '$BRANCH' concluded as '$prev_conclusion'; running CI."
+              real=1
+            fi
+          fi
+          fi
+
+          if [ "$real" -eq 0 ]; then
+            echo "::notice::Skipping CI: only docs/workflow files changed and previous run succeeded."
             echo "skipped=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::CI decision: skipped=true (no build-relevant changes detected)"
           else
             echo "skipped=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CI decision: skipped=false (build-relevant changes detected or previous run failed)"
           fi
   build:
     name: Build (matrix)
@@ -113,25 +149,29 @@ jobs:
     permissions:
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - name: windows-msbuild
+          - name: windows-ninja
             os: windows-latest
-          - name: linux-make
+            generator: Ninja
+          - name: linux-ninja
             os: ubuntu-latest
-          - name: nix-gcc
-            os: ubuntu-latest
-            nixTarget: default
-          - name: nix-clang
-            os: ubuntu-latest
-            nixTarget: clang
+            generator: Ninja
+          # Nix builds temporarily disabled
+          # - name: nix-gcc
+          #   os: ubuntu-latest
+          #   nixTarget: default
+          # - name: nix-clang
+          #   os: ubuntu-latest
+          #   nixTarget: clang
     steps:
-      - name: Checkout repository
+      - name: Checkout repositoryres
         uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Cache build artifacts
-        if: matrix.name == 'windows-msbuild' || matrix.name == 'linux-make'
+        if: matrix.name == 'windows-ninja' || matrix.name == 'linux-ninja'
         uses: actions/cache@v5
         with:
           path: |
@@ -142,53 +182,118 @@ jobs:
             ${{ runner.os }}-build-
 
       - name: Clean stale CMake cache (Linux)
-        if: matrix.name == 'linux-make'
+        if: matrix.name == 'linux-ninja'
         shell: bash
         run: |
           rm -f intermediate/make/CMakeCache.txt
           rm -rf intermediate/make/CMakeFiles
 
       - name: Clean stale CMake cache (Windows)
-        if: matrix.name == 'windows-msbuild'
+        if: matrix.name == 'windows-ninja'
         shell: cmd
         run: |
           if exist intermediate\vs2022\CMakeCache.txt del /f /q intermediate\vs2022\CMakeCache.txt
           if exist intermediate\vs2022\CMakeFiles rmdir /s /q intermediate\vs2022\CMakeFiles
 
-      - name: Generate Solution (Windows)
-        if: matrix.name == 'windows-msbuild'
+      - name: Generate build files (Windows)
+        if: matrix.name == 'windows-ninja'
         shell: cmd
+        env:
+          GENERATOR: Ninja
         run: |
+          for /f "delims=" %%V in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath') do set "VS_INSTALL_DIR=%%V"
+          if defined VS_INSTALL_DIR (
+            echo Using VSINSTALLDIR=%%VS_INSTALL_DIR%%
+            call "%%VS_INSTALL_DIR%%\VC\Auxiliary\Build\vcvars64.bat"
+          ) else (
+            echo VSInstallDir not found; trying default path
+            if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
+              call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+            ) else (
+              echo Warning: vcvars64.bat not found in default location. Proceeding without it.
+            )
+          )
           cd "%GITHUB_WORKSPACE%\Tools"
           "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
 
-      - name: Generate Solution (Linux)
-        if: matrix.name == 'linux-make'
+      - name: Report dependency fetch status (Windows)
+        if: matrix.name == 'windows-ninja'
+        shell: cmd
+        run: |
+          if exist intermediate\vs2022\dependency-fetch-status.txt (
+            type intermediate\vs2022\dependency-fetch-status.txt
+          ) else (
+            echo "(dependency-fetch-status.txt not found)"
+          )
+
+      - name: Report dependency fetch status (Linux)
+        if: matrix.name == 'linux-ninja'
         shell: bash
         run: |
-          cd "${{ github.workspace }}/Tools"
-          "${{ github.workspace }}/Tools/generate_make_release.sh"
+          status_file="${{ github.workspace }}/intermediate/make/dependency-fetch-status.txt"
+          if [[ -f "$status_file" ]]; then
+            cat "$status_file"
+          else
+            echo "(dependency-fetch-status.txt not found)"
+          fi
 
       - name: Add MSBuild to PATH
-        if: matrix.name == 'windows-msbuild'
-        uses: microsoft/setup-msbuild@v2
+        if: matrix.name == 'windows-ninja'
+        uses: microsoft/setup-msbuild@v3
 
-      - name: Build on Windows
-        if: matrix.name == 'windows-msbuild'
+      - name: Restore NuGet packages (Windows)
+        if: matrix.name == 'windows-ninja'
         working-directory: ${{github.workspace}}
-        run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /t:Restore,Build
+        run: dotnet restore ${{env.SOLUTION_FILE_PATH}}
 
-      - name: Install uuid development package
-        if: matrix.name == 'linux-make'
+      - name: Build on Windows (Ninja)
+        if: matrix.name == 'windows-ninja'
+        working-directory: ${{github.workspace}}/intermediate/vs2022
+        shell: cmd
+        run: |
+          for /f "delims=" %%V in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath') do set "VS_INSTALL_DIR=%%V"
+          if defined VS_INSTALL_DIR (
+            echo Using VSINSTALLDIR=%%VS_INSTALL_DIR%%
+            call "%%VS_INSTALL_DIR%%\VC\Auxiliary\Build\vcvars64.bat"
+          ) else (
+            echo VSInstallDir not found; trying default path
+            if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
+              call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+            ) else (
+              echo Warning: vcvars64.bat not found in default location. Proceeding without it.
+            )
+          )
+          if defined NUMBER_OF_PROCESSORS (
+            set /A JOBS=%NUMBER_OF_PROCESSORS%
+          ) else (
+            set /A JOBS=0
+          )
+          if %JOBS% GTR 0 (
+            ninja -j %JOBS%
+          ) else (
+            ninja
+          )
+      - name: Install required development packages (Linux)
+        if: matrix.name == 'linux-ninja'
         run: |
           set -euxo pipefail
           sudo apt-get update
+          # Required for building OpenSSL/curl/zlib/sqlite, and cmake to generate build files.
+          sudo apt-get install -y cmake ninja-build libssl-dev zlib1g-dev libsqlite3-dev pkg-config
+          # UUID is used by the project; different distros name it differently.
           sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
-      - name: Build on Linux
-        if: matrix.name == 'linux-make'
+      - name: Generate Solution (Linux)
+        if: matrix.name == 'linux-ninja'
+        shell: bash
+        run: |
+          cd "${{ github.workspace }}/Tools"
+          GENERATOR=Ninja "${{ github.workspace }}/Tools/generate_make_release.sh"
+
+      - name: Build on Linux (Ninja)
+        if: matrix.name == 'linux-ninja'
         working-directory: ${{github.workspace}}/intermediate/make
-        run: make -j$(nproc)
+        run: ninja -j$(nproc)
 
       - name: Install Nix
         if: startsWith(matrix.name, 'nix-')

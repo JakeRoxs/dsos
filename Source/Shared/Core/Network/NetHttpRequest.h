@@ -12,6 +12,11 @@
 #include <string>
 #include <memory>
 #include <vector>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #include <curl/curl.h>
 
 // Simple class for sending HTTP requests

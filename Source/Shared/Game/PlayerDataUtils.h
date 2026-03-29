@@ -128,7 +128,16 @@ inline void ProcessBonfires(PlayerState& state, Server* server, const std::share
 
     for (uint32_t bonfireId : current)
     {
-        if (std::find(litBonfires.begin(), litBonfires.end(), bonfireId) != litBonfires.end())
+        bool alreadyLit = false;
+        for (uint32_t existing : litBonfires)
+        {
+            if (existing == bonfireId)
+            {
+                alreadyLit = true;
+                break;
+            }
+        }
+        if (alreadyLit)
             continue;
 
         if (state.GetHasInitialState())

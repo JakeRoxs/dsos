@@ -44,7 +44,19 @@ endif()
 # Copy shared libraries over to output folder.
 foreach(config ${CMAKE_CONFIGURATION_TYPES})
     string(TOUPPER ${config} config_upper)
-    file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/redistributable_bin/${STEAM_SHLIB}"  DESTINATION "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${config_upper}}")    
+    set(STEAM_SHLIB_PATH "${CMAKE_CURRENT_SOURCE_DIR}/redistributable_bin/${STEAM_SHLIB}")
+
+    set("dst_dir" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY_${config_upper}}")
+    if(NOT dst_dir)
+        set(dst_dir "${CMAKE_BINARY_DIR}")
+        message(WARNING "CMAKE_RUNTIME_OUTPUT_DIRECTORY_${config_upper} not set; using fallback: ${dst_dir}")
+    endif()
+
+    if(EXISTS "${STEAM_SHLIB_PATH}")
+        file(COPY "${STEAM_SHLIB_PATH}" DESTINATION "${dst_dir}")
+    else()
+        message(WARNING "Steam redistributable '${STEAM_SHLIB_PATH}' not found; skipping copy for ${config}.")
+    endif()
 endforeach()
 
 

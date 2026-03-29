@@ -15,52 +15,143 @@ jobs:
     permissions:
       contents: read
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - name: windows-msbuild
+          - name: windows-ninja
             os: windows-latest
-            buildType: msbuild
-          - name: linux-make
+            generator: Ninja
+            platform: windows
+          - name: linux-ninja
             os: ubuntu-latest
-            buildType: make
+            generator: Ninja
+            platform: linux
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          submodules: recursive
 
-      - name: Generate build files (Windows)
-        if: matrix.buildType == 'msbuild'
+      - name: Cache build artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            **/intermediate
+            ~/.nuget/packages
+          key: ${{ runner.os }}-build-${{ github.repository }}-${{ hashFiles('**/*.csproj','**/CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
+      - name: Clean stale CMake cache (Linux)
+        if: matrix.name == 'linux-ninja'
+        shell: bash
+        run: |
+          rm -f intermediate/make/CMakeCache.txt
+          rm -rf intermediate/make/CMakeFiles
+
+      - name: Clean stale CMake cache (Windows)
+        if: matrix.name == 'windows-ninja'
         shell: cmd
         run: |
+          if exist intermediate\vs2022\CMakeCache.txt del /f /q intermediate\vs2022\CMakeCache.txt
+          if exist intermediate\vs2022\CMakeFiles rmdir /s /q intermediate\vs2022\CMakeFiles
+
+      - name: Generate build files (Windows)
+        if: matrix.name == 'windows-ninja'
+        shell: cmd
+        env:
+          GENERATOR: Ninja
+        run: |
+          for /f "delims=" %%V in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath') do set "VS_INSTALL_DIR=%%V"
+          if defined VS_INSTALL_DIR (
+            echo Using VSINSTALLDIR=%%VS_INSTALL_DIR%%
+            call "%%VS_INSTALL_DIR%%\VC\Auxiliary\Build\vcvars64.bat"
+          ) else (
+            echo VSInstallDir not found; trying default path
+            if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
+              call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+            ) else (
+              echo Warning: vcvars64.bat not found in default location. Proceeding without it.
+            )
+          )
           cd "%GITHUB_WORKSPACE%\Tools"
           "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
 
       - name: Generate build files (Linux)
-        if: matrix.buildType == 'make'
+        if: matrix.name == 'linux-ninja'
         shell: bash
         run: |
           cd "${{ github.workspace }}/Tools"
-          "${{ github.workspace }}/Tools/generate_make_release.sh"
+          GENERATOR=Ninja "${{ github.workspace }}/Tools/generate_make_release.sh"
+
+      - name: Report dependency fetch status (Windows)
+        if: matrix.name == 'windows-ninja'
+        shell: cmd
+        run: |
+          if exist intermediate\vs2022\dependency-fetch-status.txt (
+            type intermediate\vs2022\dependency-fetch-status.txt
+          ) else (
+            echo "(dependency-fetch-status.txt not found)"
+          )
+
+      - name: Report dependency fetch status (Linux)
+        if: matrix.name == 'linux-ninja'
+        shell: bash
+        run: |
+          status_file="${{ github.workspace }}/intermediate/make/dependency-fetch-status.txt"
+          if [[ -f "$status_file" ]]; then
+            cat "$status_file"
+          else
+            echo "(dependency-fetch-status.txt not found)"
+          fi
 
       - name: Add MSBuild to PATH
-        if: matrix.buildType == 'msbuild'
-        uses: microsoft/setup-msbuild@v2
+        if: matrix.name == 'windows-ninja'
+        uses: microsoft/setup-msbuild@v3
 
-      - name: Build (Windows)
-        if: matrix.buildType == 'msbuild'
+      - name: Restore NuGet packages (Windows)
+        if: matrix.name == 'windows-ninja'
         working-directory: ${{ github.workspace }}
-        run: msbuild /m /p:Configuration=Release ./intermediate/vs2022/ds3os.sln /t:Restore,Build
+        run: dotnet restore ./intermediate/vs2022/ds3os.sln
 
-      - name: Install uuid development package
-        if: matrix.buildType == 'make'
+      - name: Build (Windows, Ninja)
+        if: matrix.name == 'windows-ninja'
+        working-directory: ${{ github.workspace }}/intermediate/vs2022
+        shell: cmd
+        run: |
+          for /f "delims=" %%V in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath') do set "VS_INSTALL_DIR=%%V"
+          if defined VS_INSTALL_DIR (
+            echo Using VSINSTALLDIR=%%VS_INSTALL_DIR%%
+            call "%%VS_INSTALL_DIR%%\VC\Auxiliary\Build\vcvars64.bat"
+          ) else (
+            echo VSInstallDir not found; trying default path
+            if exist "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat" (
+              call "%ProgramFiles(x86)%\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+            ) else (
+              echo Warning: vcvars64.bat not found in default location. Proceeding without it.
+            )
+          )
+          if defined NUMBER_OF_PROCESSORS (
+            set /A JOBS=%NUMBER_OF_PROCESSORS%
+          ) else (
+            set /A JOBS=0
+          )
+          if %JOBS% GTR 0 (
+            ninja -j %JOBS%
+          ) else (
+            ninja
+          )
+
+      - name: Install required development packages (Linux)
+        if: matrix.name == 'linux-ninja'
         run: |
           set -euxo pipefail
           sudo apt-get update
+          sudo apt-get install -y cmake ninja-build libssl-dev zlib1g-dev libsqlite3-dev pkg-config
           sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
 
-      - name: Build (Linux Make)
-        if: matrix.buildType == 'make'
-        run: |
-          mkdir -p intermediate/make
-          cd intermediate/make
-          make -j$(nproc)
+      - name: Build (Linux, Ninja)
+        if: matrix.name == 'linux-ninja'
+        working-directory: ${{ github.workspace }}/intermediate/make
+        run: ninja -j$(nproc)

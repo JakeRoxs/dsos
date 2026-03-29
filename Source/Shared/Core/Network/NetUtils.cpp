@@ -10,6 +10,10 @@
 #include "Shared/Core/Network/NetUtils.h"
 #include "Shared/Core/Network/NetHttpRequest.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #ifdef __linux__
 #include <netdb.h>
 #include <unistd.h>
@@ -22,7 +26,8 @@ bool GetMachineIPv4(NetIPAddress& Output, bool GetPublicAddress)
     {
         NetHttpRequest Request;
         Request.SetMethod(NetHttpMethod::GET);
-        Request.SetUrl("http://api.ipify.org");
+        // Use HTTPS to ensure the public IP lookup is not tampered with in transit.
+        Request.SetUrl("https://api.ipify.org");
         if (Request.Send())
         {
             if (std::shared_ptr<NetHttpResponse> Response = Request.GetResponse(); Response && Response->GetWasSuccess())
@@ -66,11 +71,12 @@ bool GetMachineIPv4(NetIPAddress& Output, bool GetPublicAddress)
             Addr->S_un.S_un_b.s_b4
         );
 #else
+        uint32_t addr = ntohl(Addr->s_addr);
         Output = NetIPAddress(
-            Addr->s_addr & 0xFF,
-            (Addr->s_addr >> 8) & 0xFF,
-            (Addr->s_addr >> 16) & 0xFF,
-            (Addr->s_addr >> 24) & 0xF
+            (addr >> 24) & 0xFF,
+            (addr >> 16) & 0xFF,
+            (addr >> 8) & 0xFF,
+            addr & 0xFF
         );
 #endif
 

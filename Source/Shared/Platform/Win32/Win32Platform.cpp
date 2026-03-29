@@ -13,8 +13,24 @@
 #include "Platform/Platform.h"
 #include "Core/Utils/Logging.h"
 
-#include <windows.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include <WinSock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
 #include <chrono>
 
 #include <array>

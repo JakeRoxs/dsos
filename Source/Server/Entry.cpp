@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     Log(R"--(\____/ .___/\___/_/ /_/   /____/\___/_/    |___/\___/_/       )--");
     Log(R"--(    /_/                                                       )--");
     Log("");
-    Log("https://github.com/jakeroxs/ds3os");
+    Log("https://github.com/jakeroxs/dsos");
     Log("");
 
 #ifdef DEBUG_TEST
@@ -126,9 +126,13 @@ int main(int argc, char* argv[])
         {
             ClientThreads[i] = std::thread([i]() {
 
-                Client ClientInstance;
+                Client::ClientConfig clientConfig;
+                clientConfig.DisablePersistentData = true;
+                clientConfig.InstanceId = i;
 
-                if (!ClientInstance.Init(true, i))
+                Client ClientInstance(clientConfig);
+
+                if (!ClientInstance.Init())
                 {
                     Error("Client emulator failed to initialize.");
                     return;

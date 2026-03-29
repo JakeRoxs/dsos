@@ -253,7 +253,9 @@ int main()
         // server/client pointers may be null because GetHasInitialState() == false
         ProcessBonfires(state, nullptr, nullptr, NoopLogger{});
 
-        if (state.litBonfires != std::vector<uint32_t>({1u, 2u}))
+        // Avoid MSVC internal vectorised helper dependency on __std_find_trivial_4
+        // by doing an explicit check instead of std::vector operator!=.
+        if (state.litBonfires.size() != 2 || state.litBonfires[0] != 1u || state.litBonfires[1] != 2u)
         {
             std::cerr << "ProcessBonfires did not record bonfires as expected\n";
             ok = false;
