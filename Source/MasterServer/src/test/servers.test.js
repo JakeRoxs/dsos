@@ -1,4 +1,4 @@
-const assert = require("assert");
+const assert = require("node:assert");
 const test = require("node:test");
 
 process.env.MASTER_SERVER_WRITE_SECRET = "test-secret";

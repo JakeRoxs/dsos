@@ -7,19 +7,15 @@ WORKDIR /app
 # copy package definitions first to leverage layer caching
 COPY package*.json ./
 
-# install only production dependencies and clean npm cache
+# install only production dependencies, clean npm cache, install curl, create unprivileged user and take ownership
 RUN npm ci --only=production \
-    && npm cache clean --force
+    && npm cache clean --force \
+    && apk add --no-cache curl \
+    && addgroup -S master && adduser -S master -G master \
+    && chown -R master:master /app
 
 # copy the rest of the source tree
 COPY . .
-
-# install curl so the healthcheck can probe the HTTP API
-RUN apk add --no-cache curl
-
-# create an unprivileged user and take ownership of the app directory
-RUN addgroup -S master && adduser -S master -G master \
-    && chown -R master:master /app
 
 USER master
 

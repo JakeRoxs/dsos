@@ -63,7 +63,10 @@ const censors = [];
 // List of public hostnames that are allowed to mark their servers as supporting sharding.
 // This can be overridden via the SHARDING_ALLOWLIST environment variable (comma-separated).
 const shardingAllowList = (function () {
-    const defaults = ["172.105.11.166"];
+    const defaults = [
+        "https://ds2os.jakeesws.xyz",
+        "https://ds3os.jakesws.xyz",
+    ];
 
     const env = process.env.SHARDING_ALLOWLIST;
     if (!env || env.trim().length === 0) {
@@ -84,12 +87,12 @@ const shardingAllowList = (function () {
 })();
 
 const oldestSupportedVersion = 2;
-const allowedGameTypes = ["DarkSouls3", "DarkSouls2"];
+const allowedGameTypes = new Set(["DarkSouls3", "DarkSouls2"]);
 
 function isFiltered(name) {
     const nameLower = String(name).toLowerCase();
-    for (let i = 0; i < filters.length; i++) {
-        if (nameLower.includes(filters[i])) {
+    for (const filter of filters) {
+        if (nameLower.includes(filter)) {
             return true;
         }
     }
@@ -99,8 +102,8 @@ function isFiltered(name) {
 
 function isCensored(name) {
     const nameLower = String(name).toLowerCase();
-    for (let i = 0; i < censors.length; i++) {
-        if (nameLower.includes(censors[i])) {
+    for (const censor of censors) {
+        if (nameLower.includes(censor)) {
             return true;
         }
     }
@@ -130,8 +133,8 @@ function isServerCensored(serverInfo) {
 
 function isServerAllowedToShard(serverInfo) {
     const hostnameLower = String(serverInfo?.Hostname ?? "").toLowerCase();
-    for (let i = 0; i < shardingAllowList.length; i++) {
-        if (hostnameLower === shardingAllowList[i]) {
+    for (const allowed of shardingAllowList) {
+        if (hostnameLower === allowed) {
             return true;
         }
     }
@@ -143,7 +146,7 @@ function sanitizeField(value, maxLength = 256) {
     let sanitized = String(value ?? "");
 
     // strip control characters for defense-in-depth
-    sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/g, "");
+    sanitized = sanitized.replaceAll(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/g, "");
 
     // Remove possible HTML tag constructs to reduce risk of stored XSS by bug.
     let inTag = false;
@@ -166,7 +169,7 @@ function sanitizeField(value, maxLength = 256) {
     sanitized = filtered;
 
     // Remove any remaining angle brackets (e.g. incomplete tags like <script or >foo) to prevent bypass.
-    sanitized = sanitized.replace(/[<>]+/g, "");
+    sanitized = sanitized.replaceAll(/[<>]+/g, "");
 
     if (sanitized.length > maxLength) {
         sanitized = sanitized.slice(0, maxLength);
@@ -189,14 +192,23 @@ function validatePublicKey(value) {
     // Guard against ReDoS and extreme payloads by enforcing a stricter max length. (already checked above)
     // If PEM wrapper exists, use inner value; otherwise treat as raw base64.
     let keyContent = key;
-    const pemMatch = key.match(
-        /^-+BEGIN\s+PUBLIC\s+KEY-+\s*([\s\S]+?)\s*-+END\s+PUBLIC\s+KEY-+$/i,
-    );
-    if (pemMatch) {
-        keyContent = pemMatch[1];
+
+    const upperKey = key.toUpperCase();
+    const beginMarker = "-----BEGIN PUBLIC KEY-----";
+    const endMarker = "-----END PUBLIC KEY-----";
+    const beginIndex = upperKey.indexOf(beginMarker);
+    const endIndex = upperKey.lastIndexOf(endMarker);
+
+    if (beginIndex !== -1 && endIndex !== -1 && endIndex > beginIndex) {
+        const inner = key
+            .slice(beginIndex + beginMarker.length, endIndex)
+            .trim();
+        if (inner.length > 0) {
+            keyContent = inner;
+        }
     }
 
-    const keyNormalized = keyContent.replace(/[\r\n\t ]+/g, "");
+    const keyNormalized = keyContent.replaceAll(/[\r\n\t ]+/g, "");
 
     // Base64 characters only (padding only allowed at end, max 2 chars).
     if (!/^[A-Za-z0-9+/]+={0,2}$/.test(keyNormalized)) {
@@ -228,6 +240,7 @@ function validateWebAddress(value) {
         parsed.password = "";
         return parsed.toString();
     } catch (err) {
+        console.warn(`Invalid WebAddress provided: ${url}`, err);
         return "";
     }
 }
@@ -258,10 +271,65 @@ function normalizePort(value) {
 
 function normalizeGameType(value) {
     const gameType = String(value ?? "").trim();
-    return allowedGameTypes.includes(gameType) ? gameType : "DarkSouls3";
+    return allowedGameTypes.has(gameType) ? gameType : "DarkSouls3";
 }
 
-const crypto = require("crypto");
+function checkRequiredFields(req, res, fields) {
+    for (const field of fields) {
+        if (!requireField(req, res, field)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function parseIntField(req, res, fieldName, minValue, errorMessage) {
+    const value = Number.parseInt(req.body[fieldName], 10);
+    if (Number.isNaN(value) || value < minValue) {
+        sendError(res, 400, errorMessage);
+        return null;
+    }
+    return value;
+}
+
+function getServerIdFromRequest(req) {
+    const normalizedClientServerId = normalizeServerId(getClientIp(req));
+    if (!normalizedClientServerId) {
+        return null;
+    }
+
+    if ("ServerId" in req.body) {
+        const normalizedServerId = normalizeServerId(req.body["ServerId"]);
+        if (normalizedServerId) {
+            return normalizedServerId;
+        }
+    }
+
+    return normalizedClientServerId;
+}
+
+function getPortFromRequest(req) {
+    if ("Port" in req.body) {
+        const normalizedPort = normalizePort(req.body["Port"]);
+        if (normalizedPort !== null) {
+            return normalizedPort;
+        }
+    }
+
+    return 50050;
+}
+
+function getAllowShardingFromRequest(req) {
+    return (
+        req.body["AllowSharding"] == "1" || req.body["AllowSharding"] == "true"
+    );
+}
+
+function getIsShardFromRequest(req) {
+    return req.body["IsShard"] == "1" || req.body["IsShard"] == "true";
+}
+
+const crypto = require("node:crypto");
 
 function requireWriteAuth(req, res) {
     if (!MASTER_SERVER_WRITE_SECRET) {
@@ -292,7 +360,7 @@ function removeServer(id) {
     activeServers.delete(id);
 }
 
-function addServer(
+function buildServerObject({
     id,
     ipAddress,
     hostname,
@@ -311,22 +379,15 @@ function addServer(
     port,
     isShard,
     gameType,
-) {
-    // Caller is expected to sanitize inputs; this call remains to preserve defensive behavior
-    // when addServer is used from another path.
-    hostname = sanitizeField(hostname, 128);
-    privateHostname = sanitizeField(privateHostname, 128);
-    description = sanitizeField(description, 256);
-    name = sanitizeField(name, 128);
-
-    const serverObj = {
+}) {
+    return {
         Id: id,
         IpAddress: ipAddress,
         Port: port,
-        Hostname: hostname,
-        PrivateHostname: privateHostname,
-        Description: description,
-        Name: name,
+        Hostname: sanitizeField(hostname, 128),
+        PrivateHostname: sanitizeField(privateHostname, 128),
+        Description: sanitizeField(description, 256),
+        Name: sanitizeField(name, 128),
         PublicKey: publicKey,
         PlayerCount: playerCount,
         Password: password,
@@ -341,17 +402,42 @@ function addServer(
         Version: version,
         Censored: false,
     };
+}
 
-    if (!isServerAllowedToShard(serverObj) && allowSharding) {
+function persistServer(serverObj) {
+    const {
+        Id: id,
+        IpAddress: ipAddress,
+        Port: port,
+        GameType: gameType,
+        Name: name,
+    } = serverObj;
+
+    if (activeServers.has(id)) {
+        activeServers.set(id, serverObj);
+        return;
+    }
+
+    activeServers.set(id, serverObj);
+    console.log(
+        `Adding server: id=${id} ip=${ipAddress} port=${port} type=${gameType} name=${name}`,
+    );
+    console.log(`Total servers is now ${activeServers.size}`);
+}
+
+function addServer(serverData) {
+    const serverObj = buildServerObject(serverData);
+
+    if (!isServerAllowedToShard(serverObj) && serverObj.AllowSharding) {
         console.log(
-            `Dropped server, marked to allow sharding but not whitelisted: id=${id} ip=${ipAddress} port=${port} type=${gameType} name=${name}`,
+            `Dropped server, marked to allow sharding but not whitelisted: id=${serverObj.Id} ip=${serverObj.IpAddress} port=${serverObj.Port} type=${serverObj.GameType} name=${serverObj.Name}`,
         );
         return;
     }
 
-    if (allowSharding) {
+    if (serverObj.AllowSharding) {
         console.log(
-            `Sharding enabled & allowed for server: id=${id} hostname=${hostname} ip=${ipAddress} port=${port} type=${gameType} name=${name}`,
+            `Sharding enabled & allowed for server: id=${serverObj.Id} hostname=${serverObj.Hostname} ip=${serverObj.IpAddress} port=${serverObj.Port} type=${serverObj.GameType} name=${serverObj.Name}`,
         );
     }
 
@@ -360,20 +446,10 @@ function addServer(
     }
 
     if (isServerCensored(serverObj)) {
-        serverObj["Censored"] = true;
+        serverObj.Censored = true;
     }
 
-    if (activeServers.has(id)) {
-        activeServers.set(id, serverObj);
-        return;
-    }
-
-    activeServers.set(id, serverObj);
-
-    console.log(
-        `Adding server: id=${id} ip=${ipAddress} port=${port} type=${gameType} name=${name}`,
-    );
-    console.log(`Total servers is now ${activeServers.size}`);
+    persistServer(serverObj);
 }
 
 function removeTimedOutServers() {
@@ -472,26 +548,33 @@ router.post("/:id/public_key", writeLimiter, async (req, res) => {
 // @route POST api/v1/servers
 // @description Adds or updates the server registered to the clients ip.
 // @access Public
-router.post("/", writeLimiter, async (req, res) => {
-    const authError = requireWriteAuth(req, res);
-    if (authError) {
-        return authError;
+function buildServerPayload(req, res) {
+    const requiredFields = [
+        "Hostname",
+        "PrivateHostname",
+        "Description",
+        "Name",
+        "PublicKey",
+        "PlayerCount",
+        "Password",
+        "ModsWhiteList",
+        "ModsBlackList",
+        "ModsRequiredList",
+    ];
+
+    if (!checkRequiredFields(req, res, requiredFields)) {
+        return null;
     }
 
-    if (!requireField(req, res, "Hostname")) return;
-    if (!requireField(req, res, "PrivateHostname")) return;
-    if (!requireField(req, res, "Description")) return;
-    if (!requireField(req, res, "Name")) return;
-    if (!requireField(req, res, "PublicKey")) return;
-    if (!requireField(req, res, "PlayerCount")) return;
-    if (!requireField(req, res, "Password")) return;
-    if (!requireField(req, res, "ModsWhiteList")) return;
-    if (!requireField(req, res, "ModsBlackList")) return;
-    if (!requireField(req, res, "ModsRequiredList")) return;
-
-    const playerCount = parseInt(req.body["PlayerCount"], 10);
-    if (Number.isNaN(playerCount) || playerCount < 0) {
-        return sendError(res, 400, "Invalid player_count");
+    const playerCount = parseIntField(
+        req,
+        res,
+        "PlayerCount",
+        0,
+        "Invalid player_count",
+    );
+    if (playerCount === null) {
+        return null;
     }
 
     const name = sanitizeField(req.body["Name"], 128);
@@ -502,61 +585,47 @@ router.post("/", writeLimiter, async (req, res) => {
     const rawPublicKey = req.body["PublicKey"];
     const publicKey = validatePublicKey(rawPublicKey);
     if (!publicKey) {
-        return sendError(res, 400, "Invalid PublicKey");
+        sendError(res, 400, "Invalid PublicKey");
+        return null;
     }
 
     const password = String(req.body["Password"]);
     if (password.length === 0 || password.length > 1024) {
-        return sendError(res, 400, "Invalid password length");
+        sendError(res, 400, "Invalid password length");
+        return null;
     }
 
-    let webAddress = "";
-    if ("WebAddress" in req.body && req.body["WebAddress"] != null) {
-        webAddress = validateWebAddress(req.body["WebAddress"]);
-    }
+    const webAddress =
+        "WebAddress" in req.body && req.body["WebAddress"] != null
+            ? validateWebAddress(req.body["WebAddress"])
+            : "";
+
     const modsWhiteList = req.body["ModsWhiteList"];
     const modsBlackList = req.body["ModsBlackList"];
     const modsRequiredList = req.body["ModsRequiredList"];
-    let allowSharding = false;
-    let isShard = false;
-    let gameType = "DarkSouls3";
-    const normalizedClientServerId = normalizeServerId(getClientIp(req));
-    if (!normalizedClientServerId) {
-        return sendError(res, 500, "Invalid client IP for server ID");
-    }
-    let serverId = normalizedClientServerId;
-    let port = 50050;
 
-    if ("AllowSharding" in req.body) {
-        allowSharding =
-            req.body["AllowSharding"] == "1" ||
-            req.body["AllowSharding"] == "true";
+    const serverId = getServerIdFromRequest(req);
+    if (!serverId) {
+        sendError(res, 500, "Invalid client IP for server ID");
+        return null;
     }
-    if ("ServerId" in req.body) {
-        const normalizedServerId = normalizeServerId(req.body["ServerId"]);
-        if (normalizedServerId) {
-            serverId = normalizedServerId;
-        }
-    }
-    if ("Port" in req.body) {
-        const normalizedPort = normalizePort(req.body["Port"]);
-        if (normalizedPort !== null) {
-            port = normalizedPort;
-        }
-    }
-    if ("IsShard" in req.body) {
-        isShard = req.body["IsShard"] == "1" || req.body["IsShard"] == "true";
-    }
-    if ("GameType" in req.body) {
-        gameType = normalizeGameType(req.body["GameType"]);
-    }
+
+    const port = getPortFromRequest(req);
+    const allowSharding = getAllowShardingFromRequest(req);
+    const isShard = getIsShardFromRequest(req);
+    const gameType =
+        "GameType" in req.body
+            ? normalizeGameType(req.body["GameType"])
+            : "DarkSouls3";
 
     const version =
-        "ServerVersion" in req.body ? parseInt(req.body["ServerVersion"]) : 1;
+        "ServerVersion" in req.body
+            ? Number.parseInt(req.body["ServerVersion"])
+            : 1;
 
-    addServer(
-        serverId,
-        getClientIp(req),
+    return {
+        id: serverId,
+        ipAddress: getClientIp(req),
         hostname,
         privateHostname,
         description,
@@ -573,8 +642,21 @@ router.post("/", writeLimiter, async (req, res) => {
         port,
         isShard,
         gameType,
-    );
+    };
+}
 
+router.post("/", writeLimiter, async (req, res) => {
+    const authError = requireWriteAuth(req, res);
+    if (authError) {
+        return authError;
+    }
+
+    const serverData = buildServerPayload(req, res);
+    if (!serverData) {
+        return;
+    }
+
+    addServer(serverData);
     res.json({ status: "success" });
 });
 
