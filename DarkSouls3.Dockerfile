@@ -16,6 +16,19 @@ RUN sed -i 's/\r$//' ./generate_make_release.sh && \
 WORKDIR /build
 RUN cd intermediate/make && (if [ -f build.ninja ]; then ninja -j$(nproc || echo 4); else make -j$(nproc || echo 4); fi)
 
+# Ensure canonical output path exists and copy Server from the build output tree.
+RUN mkdir -p /build/bin/x64_release && \
+    if [ -f /build/intermediate/make/Source/Server/Server ]; then \
+        cp /build/intermediate/make/Source/Server/Server /build/bin/x64_release/Server; \
+    elif [ -f /build/intermediate/make/Source/Server.DarkSouls3/Server ]; then \
+        cp /build/intermediate/make/Source/Server.DarkSouls3/Server /build/bin/x64_release/Server; \
+    elif [ -f /build/intermediate/make/Source/Server.DarkSouls2/Server ]; then \
+        cp /build/intermediate/make/Source/Server.DarkSouls2/Server /build/bin/x64_release/Server; \
+    fi && \
+    if [ ! -f /build/bin/x64_release/Server ]; then \
+        echo "Error: Server executable not found in known build output locations"; exit 1; \
+    fi
+
 # Ensure there is canonical output for copy into runtime stage
 RUN if [ ! -d /build/bin/x64_release ]; then \
       echo "Error: canonical build output directory /build/bin/x64_release not found"; exit 1; \
