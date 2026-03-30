@@ -28,6 +28,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+# Constants to avoid literal duplication and improve unit test stability
+DEFAULT_SCAN_WORKFLOWS = "codeql.yml"
+UNKNOWN_GROUP = "<unknown>"
+THIRD_PARTY_PREFIX = "Source/ThirdParty/"
+
 
 def _parse_git_remote_url(url: str) -> Optional[tuple[str, str]]:
     """Parse a git remote URL into (owner, repo) if possible."""
@@ -67,7 +72,7 @@ def get_git_origin_repo() -> Optional[tuple[str, str]]:
         if not output:
             return None
         return _parse_git_remote_url(output)
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
+    except (subprocess.CalledProcessError, OSError):
         return None
 
 
@@ -120,99 +125,83 @@ def run_gh_api(
         raise SystemExit(1)
 
 
+def _parse_iso_timestamp(value: Any, workflow_file: str) -> Optional[float]:
+    if not isinstance(value, str):
+        return None
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(value)
+        return dt.astimezone(timezone.utc).timestamp()
+    except ValueError as e:
+        print(
+            f"WARNING: failed to parse timestamp from workflow '{workflow_file}' response: {e}",
+            file=sys.stderr,
+        )
+        return None
+
+
+def _get_workflow_latest_run_time(
+    owner: str,
+    repo: str,
+    workflow_file: str,
+    check_output_fn: Callable[..., str],
+) -> Optional[float]:
+    cmd = [
+        "gh",
+        "api",
+        "-H",
+        "Accept: application/vnd.github+json",
+        f"/repos/{owner}/{repo}/actions/workflows/{workflow_file}/runs?status=completed&per_page=50",
+    ]
+    try:
+        try:
+            output = check_output_fn(cmd, stderr=subprocess.STDOUT, text=True)
+        except TypeError:
+            output = check_output_fn(cmd)
+
+        payload = json.loads(output)
+        runs = payload.get("workflow_runs") or []
+        if not runs:
+            return None
+
+        parsed_runs = []
+        for run in runs:
+            ts = _parse_iso_timestamp(run.get("updated_at") or run.get("created_at"), workflow_file)
+            if ts is not None:
+                parsed_runs.append((ts, run.get("conclusion")))
+
+        if not parsed_runs:
+            return None
+
+        successful = [t for t in parsed_runs if t[1] == "success"]
+        candidate = max(successful or parsed_runs, key=lambda t: t[0])
+        return candidate[0]
+    except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
+        print(
+            f"WARNING: failed to query GitHub Actions API for workflow '{workflow_file}': {e}",
+            file=sys.stderr,
+        )
+        return None
+
+
 def get_last_scan_workflow_run_time(
     owner: str,
     repo: str,
-    workflow_files: List[str] | str = "codeql.yml",
+    workflow_files: List[str] | str = DEFAULT_SCAN_WORKFLOWS,
     check_output_fn: Callable[..., str] | None = None,
 ) -> Optional[float]:
-    """Return the Unix timestamp of the last successful scan workflow run.
-
-    Uses the GitHub Actions API via `gh api` to fetch the latest completed, successful
-    workflow run for one or more workflow files.
-
-    Args:
-        owner: GitHub repo owner.
-        repo: GitHub repo name.
-        workflow_files: A workflow filename or comma-separated list of workflow filenames
-            (e.g. codeql.yml, sonar.yml) to consider.
-
-    Returns:
-        Unix timestamp (seconds) of the most recent run across all workflows, or None if unknown.
-    """
-
     if isinstance(workflow_files, str):
         workflow_files = [wf.strip() for wf in workflow_files.split(",") if wf.strip()]
 
-    latest_ts: Optional[float] = None
     if check_output_fn is None:
         check_output_fn = subprocess.check_output
 
+    latest_ts: Optional[float] = None
     for workflow_file in workflow_files:
-        try:
-            # The GitHub Actions API does not reliably support `conclusion=success` as a query parameter.
-            # Request completed runs and select the first successful one in code.
-            cmd = [
-                "gh",
-                "api",
-                "-H",
-                "Accept: application/vnd.github+json",
-                f"/repos/{owner}/{repo}/actions/workflows/{workflow_file}/runs?status=completed&per_page=50",
-            ]
-            # Allow injection of a custom check_output-like function for testing.
-            # Some callables may not accept `stderr`/`text`, so fall back if needed.
-            try:
-                output = check_output_fn(cmd, stderr=subprocess.STDOUT, text=True)
-            except TypeError:
-                output = check_output_fn(cmd)
-            payload = json.loads(output)
-            runs = payload.get("workflow_runs") or []
-            if not runs:
-                # No completed runs for this workflow; try the next one.
-                continue
-
-            # Select the most recent successful run. If no successful runs exist,
-            # fall back to the most recent completed run.
-            def _parse_ts(run: Dict[str, Any]) -> Optional[float]:
-                updated_at = run.get("updated_at") or run.get("created_at")
-                if not updated_at:
-                    return None
-                # GitHub timestamps are ISO 8601 with 'Z' (UTC) and may include fractional seconds.
-                # Example: 2024-03-15T18:37:12.345Z
-                try:
-                    if isinstance(updated_at, str) and updated_at.endswith("Z"):
-                        updated_at = updated_at[:-1] + "+00:00"
-                    dt = datetime.fromisoformat(updated_at)
-                    return dt.astimezone(timezone.utc).timestamp()
-                except ValueError as e:
-                    print(
-                        f"WARNING: failed to parse timestamp from workflow '{workflow_file}' response: {e}",
-                        file=sys.stderr,
-                    )
-                    return None
-
-            parsed_runs = []
-            for run in runs:
-                ts = _parse_ts(run)
-                if ts is not None:
-                    parsed_runs.append((ts, run.get("conclusion"), run))
-
-            if not parsed_runs:
-                # None of the returned runs contained a parseable timestamp.
-                continue
-
-            # Prefer the latest successful run by timestamp.
-            successful_runs = [t for t in parsed_runs if t[1] == "success"]
-            candidate = max(successful_runs or parsed_runs, key=lambda t: t[0])
-            ts = candidate[0]
-            if latest_ts is None or ts > latest_ts:
-                latest_ts = ts
-        except (subprocess.CalledProcessError, json.JSONDecodeError) as e:
-            print(
-                f"WARNING: failed to query GitHub Actions API for workflow '{workflow_file}': {e}",
-                file=sys.stderr,
-            )
-            continue
+        ts = _get_workflow_latest_run_time(owner, repo, workflow_file, check_output_fn)
+        if ts is not None and (latest_ts is None or ts > latest_ts):
+            latest_ts = ts
 
     return latest_ts
 
@@ -262,6 +251,33 @@ def _extract_alert_summary(alert: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _group_by_path(alert: Dict[str, Any]) -> str:
+    return (alert.get("most_recent_instance", {}) or {}).get("location", {}).get("path") or UNKNOWN_GROUP
+
+
+def _group_by_severity(alert: Dict[str, Any]) -> str:
+    return (alert.get("rule", {}) or {}).get("severity") or UNKNOWN_GROUP
+
+
+def _group_by_thirdparty(alert: Dict[str, Any]) -> str:
+    path = (alert.get("most_recent_instance", {}) or {}).get("location", {}).get("path", "")
+    if path.startswith(THIRD_PARTY_PREFIX):
+        remainder = path[len(THIRD_PARTY_PREFIX) :]
+        return remainder.split("/", 1)[0] or "<thirdparty>"
+    return "<repo>"
+
+
+def _group_by_thirdparty_rule(alert: Dict[str, Any]) -> str:
+    (alert.get("most_recent_instance", {}) or {}).get("location", {}).get("path", "")
+    lib = _group_by_thirdparty(alert)
+    rule_name = (alert.get("rule", {}) or {}).get("name") or UNKNOWN_GROUP
+    return f"{lib}::{rule_name}"
+
+
+def _group_by_rule(alert: Dict[str, Any]) -> str:
+    return (alert.get("rule", {}) or {}).get("name") or UNKNOWN_GROUP
+
+
 def group_alerts(alerts: List[Dict[str, Any]], group_by: str = "rule") -> Dict[str, List[Dict[str, Any]]]:
     """Group alerts in a stable way for todo generation.
 
@@ -274,29 +290,16 @@ def group_alerts(alerts: List[Dict[str, Any]], group_by: str = "rule") -> Dict[s
     """
     out: Dict[str, List[Dict[str, Any]]] = {}
 
-    def thirdparty_name(path: str) -> str:
-        if path.startswith("Source/ThirdParty/"):
-            remainder = path[len("Source/ThirdParty/") :]
-            return remainder.split("/", 1)[0] or "<thirdparty>"
-        return "<repo>"
+    key_selector = {
+        "path": _group_by_path,
+        "severity": _group_by_severity,
+        "thirdparty": _group_by_thirdparty,
+        "thirdparty_rule": _group_by_thirdparty_rule,
+        "rule": _group_by_rule,
+    }.get(group_by, _group_by_rule)
 
     for a in alerts:
-        if group_by == "path":
-            key = (a.get("most_recent_instance", {}) or {}).get("location", {}).get("path") or "<unknown>"
-        elif group_by == "severity":
-            key = (a.get("rule", {}) or {}).get("severity") or "<unknown>"
-        elif group_by == "thirdparty":
-            path = (a.get("most_recent_instance", {}) or {}).get("location", {}).get("path", "")
-            key = thirdparty_name(path)
-        elif group_by == "thirdparty_rule":
-            path = (a.get("most_recent_instance", {}) or {}).get("location", {}).get("path", "")
-            lib = thirdparty_name(path)
-            rule = (a.get("rule", {}) or {}).get("name") or "<unknown>"
-            key = f"{lib}::{rule}"
-        else:
-            key = (a.get("rule", {}) or {}).get("name") or "<unknown>"
-
-        out.setdefault(key, []).append(a)
+        out.setdefault(key_selector(a), []).append(a)
 
     return out
 
@@ -315,26 +318,33 @@ def severity_to_priority(severity: str | None) -> str:
     return "p2"
 
 
+def _todo_priority(alerts: List[Dict[str, Any]], default_priority: str) -> str:
+    ranks = {"p1": 1, "p2": 2, "p3": 3}
+    best = default_priority
+    for a in alerts:
+        sev = (a.get("rule", {}) or {}).get("severity")
+        p = severity_to_priority(sev)
+        if ranks.get(p, 2) < ranks.get(best, 2):
+            best = p
+    return best
+
+
+def _rule_help_fields(rule_obj: Any) -> tuple[Optional[str], Optional[str]]:
+    if not isinstance(rule_obj, dict):
+        return None, None
+    help_field = rule_obj.get("help")
+    if isinstance(help_field, dict):
+        return help_field.get("text"), rule_obj.get("helpUri")
+    return help_field, rule_obj.get("helpUri")
+
+
 def render_todo_body(
     issue_id: str, group_key: str, alerts: List[Dict[str, Any]], default_priority: str = "p2"
 ) -> str:
     """Render a markdown todo body for a set of alerts in file-todos format."""
 
     title = f"Code scanning alerts: {group_key}"
-
-    # Determine priority (use highest severity seen)
-    def _priority_rank(prio: str) -> int:
-        return {"p1": 1, "p2": 2, "p3": 3}.get(prio, 2)
-
-    priority = default_priority
-    best_rank = _priority_rank(priority)
-    for a in alerts:
-        sev = (a.get("rule", {}) or {}).get("severity")
-        p = severity_to_priority(sev)
-        pr = _priority_rank(p)
-        if pr < best_rank:
-            best_rank = pr
-            priority = p
+    priority = _todo_priority(alerts, default_priority)
 
     lines: List[str] = [
         "---",
@@ -363,17 +373,8 @@ def render_todo_body(
         path = loc.get("path")
         line = loc.get("start_line")
         msg = (inst.get("message", {}) or {}).get("text")
-        rule_obj = a.get("rule")
-        if isinstance(rule_obj, dict):
-            help_field = rule_obj.get("help")
-            if isinstance(help_field, dict):
-                help_text = help_field.get("text")
-            else:
-                help_text = help_field
-            help_uri = rule_obj.get("helpUri")
-        else:
-            help_text = None
-            help_uri = None
+
+        help_text, help_uri = _rule_help_fields(a.get("rule"))
 
         lines.append(f"- **#{num}** [{rule}]({url}) — {desc}")
         if path:
@@ -453,6 +454,82 @@ def next_issue_id(todo_root: str) -> str:
     return f"{max_id + 1:03d}"
 
 
+def _resolve_owner_repo(owner: Optional[str], repo: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    if owner and repo:
+        return owner, repo
+
+    inferred = get_git_origin_repo()
+    if inferred:
+        return owner or inferred[0], repo or inferred[1]
+
+    return None, None
+
+
+def _load_cache(
+    cache_path: str,
+    cache_ttl: int,
+    owner: str,
+    repo: str,
+    scan_workflows: str,
+    cache_based_on_codeql: bool,
+) -> Optional[Any]:
+    try:
+        if not os.path.exists(cache_path):
+            return None
+
+        if cache_based_on_codeql:
+            last_scan = get_last_scan_workflow_run_time(owner, repo, scan_workflows)
+            if last_scan is not None and last_scan > os.path.getmtime(cache_path):
+                return None
+
+        age = time.time() - os.path.getmtime(cache_path)
+        if age > cache_ttl:
+            return None
+
+        with open(cache_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        print(f"WARNING: failed to load cache {cache_path}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return None
+
+
+def _save_cache(cache_path: str, value: Any) -> None:
+    try:
+        cache_dir = os.path.dirname(cache_path)
+        if cache_dir:
+            os.makedirs(cache_dir, exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(value, f, separators=(",", ":"), ensure_ascii=False)
+    except Exception as e:
+        print(f"WARNING: failed to save cache {cache_path}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+
+
+def _clean_todo_dir(todo_root: str) -> None:
+    pattern = os.path.join(todo_root, "**", "[0-9][0-9][0-9]-*.md")
+    for existing in glob.glob(pattern, recursive=True):
+        _safe_delete(existing)
+
+
+def _write_todos(groups: Dict[str, List[Dict[str, Any]]], todo_root: str) -> int:
+    issue_id = next_issue_id(todo_root)
+    for group_key, alerts in groups.items():
+        if not alerts:
+            continue
+        filename = safe_filename(group_key)
+        first_alert = alerts[0]
+        severity = (first_alert.get("rule", {}) or {}).get("severity")
+        todo_path = os.path.join(
+            todo_root,
+            f"{issue_id}-pending-{severity_to_priority(severity)}-{filename}.md",
+        )
+        with open(todo_path, "w", encoding="utf-8") as f:
+            f.write(render_todo_body(issue_id, group_key, alerts))
+        issue_id = f"{int(issue_id) + 1:03d}"
+    return len(groups)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         description="Fetch GitHub Code Scanning alerts and write todos for each alert group."
@@ -498,7 +575,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument(
         "--scan-workflows",
-        default="codeql.yml",
+        default=DEFAULT_SCAN_WORKFLOWS,
         help="Comma-separated list of workflow filenames (e.g. CodeQL, SonarQube) used to determine cache freshness",
     )
     parser.add_argument(
@@ -535,65 +612,26 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     args = parser.parse_args(argv)
 
-    owner = args.owner
-    repo = args.repo
-    if not owner or not repo:
-        inferred = get_git_origin_repo()
-        if inferred:
-            if not owner:
-                owner = inferred[0]
-            if not repo:
-                repo = inferred[1]
-
+    owner, repo = _resolve_owner_repo(args.owner, args.repo)
     if not owner or not repo:
         parser.error("Unable to determine GitHub owner/repo. Pass --owner/--repo or run from a git clone with origin set.")
 
-    data = None
-
     cache_path = os.path.abspath(args.cache_file)
-    cache_ttl = args.cache_ttl
 
-    def _load_cache() -> Optional[Any]:
-        try:
-            if not os.path.exists(cache_path):
-                return None
-
-            # Treat cache as stale if CodeQL has run since the cache was written.
-            if args.cache_based_on_codeql:
-                last_scan = get_last_scan_workflow_run_time(owner, repo, args.scan_workflows)
-                if last_scan is not None and last_scan > os.path.getmtime(cache_path):
-                    return None
-
-            # TTL-based freshness
-            age = time.time() - os.path.getmtime(cache_path)
-            if age > cache_ttl:
-                return None
-
-            with open(cache_path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"WARNING: failed to load cache {cache_path}: {e}", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-            return None
-
-    def _save_cache(value: Any) -> None:
-        try:
-            cache_dir = os.path.dirname(cache_path)
-            if cache_dir:
-                os.makedirs(cache_dir, exist_ok=True)
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(value, f, separators=(",", ":"), ensure_ascii=False)
-        except Exception as e:
-            print(f"WARNING: failed to save cache {cache_path}: {e}", file=sys.stderr)
-            traceback.print_exc(file=sys.stderr)
-
+    data = None
     if not args.force:
-        data = _load_cache()
+        data = _load_cache(
+            cache_path,
+            args.cache_ttl,
+            owner,
+            repo,
+            args.scan_workflows,
+            args.cache_based_on_codeql,
+        )
 
     if data is None:
         data = run_gh_api(owner, repo, args.state, args.per_page)
-        # Cache the raw data for faster subsequent runs
-        _save_cache(data)
+        _save_cache(cache_path, data)
 
     if not isinstance(data, list):
         print("ERROR: expected a list of alerts from the API", file=sys.stderr)
@@ -608,46 +646,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         parser.error("Cannot use --preview-todos and --write-todos together. Choose one.")
 
     if args.preview_todos:
-        # Preview only; no writing.
         return 0
 
-    # Default is to write todos unless preview is explicitly requested.
     todo_root = os.path.abspath(args.todo_dir)
-
-    # Safety check: do not clean arbitrary parent directories.
-    # This script is intended for code scanning todos only.
-    if args.clean and os.path.abspath(todo_root) in (
-        os.path.abspath("todos"),
-        os.path.abspath("."),
-    ):
+    if args.clean and os.path.abspath(todo_root) in (os.path.abspath("todos"), os.path.abspath(".")):
         parser.error("--clean on top-level dirs is not allowed. Use --todo-dir todos/code-scanning (default).")
 
     os.makedirs(todo_root, exist_ok=True)
-
     if args.clean:
-        # Remove generated code scanning todo files (e.g. 001-pending-*.md) recursively.
-        # This matches the same scope used by next_issue_id(), preventing stale todos or issue ID collisions.
-        pattern = os.path.join(todo_root, "**", "[0-9][0-9][0-9]-*.md")
-        for existing in glob.glob(pattern, recursive=True):
-            _safe_delete(existing)
+        _clean_todo_dir(todo_root)
 
-    issue_id = next_issue_id(todo_root)
-    for group_key, alerts in groups.items():
-        if not alerts:
-            # Defensive: skip empty groups (should not happen under normal operation)
-            continue
-        filename = safe_filename(group_key)
-        first_alert = alerts[0]
-        severity = (first_alert.get("rule", {}) or {}).get("severity")
-        todo_path = os.path.join(
-            todo_root,
-            f"{issue_id}-pending-{severity_to_priority(severity)}-{filename}.md",
-        )
-        with open(todo_path, "w", encoding="utf-8") as f:
-            f.write(render_todo_body(issue_id, group_key, alerts))
-        issue_id = f"{int(issue_id) + 1:03d}"
-
-    print(f"Wrote {len(groups)} todo file(s) to {todo_root}")
+    written = _write_todos(groups, todo_root)
+    print(f"Wrote {written} todo file(s) to {todo_root}")
     return 0
 
 
@@ -658,7 +668,7 @@ class GetLastScanWorkflowRunTimeTests(unittest.TestCase):
     def test_returns_timestamp_for_single_workflow(self):
         payload = self._make_payload("2026-03-15T12:00:00Z")
         ts = get_last_scan_workflow_run_time(
-            "owner", "repo", "codeql.yml", check_output_fn=lambda *args, **kwargs: payload
+            "owner", "repo", DEFAULT_SCAN_WORKFLOWS, check_output_fn=lambda *args, **kwargs: payload
         )
         expected = datetime.fromisoformat("2026-03-15T12:00:00+00:00").timestamp()
         self.assertEqual(ts, expected)
@@ -689,7 +699,7 @@ class GetLastScanWorkflowRunTimeTests(unittest.TestCase):
         ts = get_last_scan_workflow_run_time(
             "owner",
             "repo",
-            "codeql.yml",
+            DEFAULT_SCAN_WORKFLOWS,
             check_output_fn=lambda *args, **kwargs: json.dumps({"workflow_runs": []}),
         )
         self.assertIsNone(ts)
@@ -708,7 +718,7 @@ class GetLastScanWorkflowRunTimeTests(unittest.TestCase):
         ts = get_last_scan_workflow_run_time(
             "owner",
             "repo",
-            "codeql.yml",
+            DEFAULT_SCAN_WORKFLOWS,
             check_output_fn=lambda *args, **kwargs: payload,
         )
         expected = datetime.fromisoformat("2026-03-15T14:00:00+00:00").timestamp()
@@ -718,7 +728,7 @@ class GetLastScanWorkflowRunTimeTests(unittest.TestCase):
         ts = get_last_scan_workflow_run_time(
             "owner",
             "repo",
-            "codeql.yml",
+            DEFAULT_SCAN_WORKFLOWS,
             check_output_fn=lambda *args, **kwargs: json.dumps({
                 "workflow_runs": [{"updated_at": "not-a-time"}]
             }),
