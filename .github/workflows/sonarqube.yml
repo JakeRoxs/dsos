@@ -35,6 +35,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build build-essential pkg-config libsqlite3-dev libssl-dev uuid-dev
 
+      - name: Cache build artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            build
+            **/intermediate
+            ~/.nuget/packages
+          key: ${{ runner.os }}-sonar-build-${{ hashFiles('**/CMakeLists.txt', 'Protobuf/**/*', '**/*.cpp', '**/*.h', '**/*.hpp', '**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-sonar-build-
+
       - name: Configure project (CMake)
         run: |
           mkdir -p build
@@ -58,6 +69,41 @@ jobs:
 
           echo "=== sonar-project.properties ==="
           cat sonar-project.properties
+
+      - name: Setup .NET SDK for C# analysis
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install SonarScanner for .NET tool
+        run: |
+          dotnet tool install --global dotnet-sonarscanner --version 5.12.0
+          export PATH="$HOME/.dotnet/tools:$PATH"
+
+      - name: SonarScanner for .NET begin
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          export PATH="$HOME/.dotnet/tools:$PATH"
+          dotnet sonarscanner begin \
+            /k:"JakeRoxs_dsos_9178fbff-b3bf-4c2c-9c34-efc7eb852932" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.login="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
+            /d:sonar.verbose=true
+
+      - name: Build .NET solution for C# analysis
+        run: |
+          export PATH="$HOME/.dotnet/tools:$PATH"
+          dotnet build ./intermediate/vs2022/ds3os.sln -c Release
+
+      - name: SonarScanner for .NET end
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          export PATH="$HOME/.dotnet/tools:$PATH"
+          dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
 
       - uses: SonarSource/sonarqube-scan-action@v6
         env:
