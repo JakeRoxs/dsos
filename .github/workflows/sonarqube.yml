@@ -13,7 +13,7 @@ on:
         default: "main"
 
 permissions:
-  pull-requests: read # allows SonarQube to decorate PRs with analysis results
+  pull-requests: read
 
 jobs:
   build:
@@ -28,90 +28,57 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0
 
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build build-essential pkg-config libsqlite3-dev libssl-dev uuid-dev
 
-      - name: Cache build artifacts
-        uses: actions/cache@v5
-        with:
-          path: |
-            build
-            **/intermediate
-            ~/.nuget/packages
-          key: ${{ runner.os }}-sonar-build-${{ hashFiles('**/CMakeLists.txt', 'Protobuf/**/*', '**/*.cpp', '**/*.h', '**/*.hpp', '**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-sonar-build-
-
-      - name: Configure project (CMake)
-        run: |
-          mkdir -p build
-          cd build
-          cmake -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
-
-      - name: Build project
-        run: |
-          cd build
-          cmake --build .
-      - name: Debug - check compile_commands and file structure
-        run: |
-          echo "=== compile_commands.json exists? ==="
-          ls -la build/compile_commands.json
-
-          echo "=== First 3 entries in compile_commands.json ==="
-          head -40 build/compile_commands.json
-
-          echo "=== C/C++ files found in repo ==="
-          find . -not -path './build/*' \( -name "*.cpp" -o -name "*.c" -o -name "*.h" -o -name "*.hpp" \) | head -20
-
-          echo "=== sonar-project.properties ==="
-          cat sonar-project.properties
-
-      - name: Setup .NET SDK for C# analysis
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: "8.0.x"
 
-      - name: Install SonarScanner for .NET tool
+      - name: Install SonarScanner for .NET
         run: |
           dotnet tool install --global dotnet-sonarscanner --version 5.12.0
-          export PATH="$HOME/.dotnet/tools:$PATH"
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
-      - name: SonarScanner for .NET begin
+      - name: Configure CMake (generates compile_commands.json)
+        run: |
+          mkdir -p build
+          cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build C++ project
+        run: cmake --build build
+
+      - name: SonarScanner begin
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
         run: |
-          export PATH="$HOME/.dotnet/tools:$PATH"
           dotnet sonarscanner begin \
-            /k:"JakeRoxs_dsos_9178fbff-b3bf-4c2c-9c34-efc7eb852932" \
+            /k:"$SONAR_PROJECT_KEY" \
+            /n:"dsos" \
             /d:sonar.host.url="$SONAR_HOST_URL" \
-            /d:sonar.login="$SONAR_TOKEN" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.sources=. \
+            /d:sonar.inclusions="Source/**/*.cpp,Source/**/*.c,Source/**/*.h,Source/**/*.hpp,Source/**/*.cs,Loader/**/*.cs,Source/**/CMakeLists.txt" \
+            /d:sonar.exclusions="**/*.java,Resources/**/*,Source/ThirdParty/**,build/**" \
+            /d:sonar.cfamily.compile-commands="build/compile_commands.json" \
+            /d:sonar.cfamily.threads=4 \
+            /d:sonar.sourceEncoding=UTF-8 \
             /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
             /d:sonar.verbose=true
 
-      - name: Build .NET Loader project for C# analysis
+      - name: Build .NET project (for C# analysis)
         run: |
-          export PATH="$HOME/.dotnet/tools:$PATH"
           dotnet build Source/Loader/Loader.csproj -c Release /p:EnableWindowsTargeting=true
 
-      - name: SonarScanner for .NET end
+      - name: SonarScanner end
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          export PATH="$HOME/.dotnet/tools:$PATH"
-          dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
-
-      - uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: SonarSource/sonarqube-quality-gate-action@v1
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"

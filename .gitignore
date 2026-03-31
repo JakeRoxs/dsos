@@ -85,6 +85,8 @@ result
 /build*
 /compile_commands.json
 /out/build/x64-Debug
+*/obj/
+sonar-project.properties
 
 # Copilot stuff
 AGENTS.md
@@ -95,4 +97,3 @@ copilot-instructions.md
 /todos
 /docs
 
-*/obj/
