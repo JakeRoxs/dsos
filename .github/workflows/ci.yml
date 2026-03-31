@@ -87,10 +87,22 @@ jobs:
             BASE_SHA=${{ github.event.pull_request.base.sha }}
             HEAD_SHA=${{ github.event.pull_request.head.sha }}
             BRANCH=${{ github.event.pull_request.head.ref }}
+
+            # Use just the latest commit delta for the skip decision in PR flows, so non-build tweaks
+            # after an earlier full build do not retrigger the entire matrix.
+            if PREV_COMMIT=$(git rev-parse --verify "${HEAD_SHA}^1" 2>/dev/null); then
+              COMMIT_BASE=$PREV_COMMIT
+              COMMIT_HEAD=$HEAD_SHA
+            else
+              COMMIT_BASE=$BASE_SHA
+              COMMIT_HEAD=$HEAD_SHA
+            fi
           else
             BASE_SHA=${{ github.event.before }}
             HEAD_SHA=${{ github.sha }}
             BRANCH=${GITHUB_REF_NAME}
+            COMMIT_BASE=$BASE_SHA
+            COMMIT_HEAD=$HEAD_SHA
           fi
 
           # If there's no valid base commit (new branch / force push), run CI.
@@ -100,9 +112,10 @@ jobs:
             exit 0
           fi
 
-          echo "Comparing $BASE_SHA..$HEAD_SHA"
+          echo "Comparing full PR range $BASE_SHA..$HEAD_SHA"
+          echo "Comparing commit delta $COMMIT_BASE..$COMMIT_HEAD"
 
-          if ! CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA"); then
+          if ! CHANGED=$(git diff --name-only "$COMMIT_BASE" "$COMMIT_HEAD"); then
             echo "::warning::git diff failed; running CI by default."
             echo "skipped=false" >> "$GITHUB_OUTPUT"
             exit 0
