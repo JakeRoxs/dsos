@@ -240,7 +240,7 @@ function validateWebAddress(value) {
         parsed.password = "";
         return parsed.toString();
     } catch (err) {
-        console.warn(`Invalid WebAddress provided: ${url}`, err);
+        console.warn("Invalid WebAddress provided:", url, err);
         return "";
     }
 }
