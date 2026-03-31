@@ -92,6 +92,7 @@ jobs:
 
       # Cache CodeQL database + trap caches across runs to avoid rebuilding the DB from scratch.
       - name: Cache CodeQL database + trap caches
+        id: cache-codeql-db
         uses: actions/cache@v5
         with:
           path: |
@@ -101,6 +102,29 @@ jobs:
           restore-keys: |
             codeql-${{ runner.os }}-${{ matrix.language }}-
 
+      - name: Validate restored CodeQL cache
+        id: validate-codeql-cache
+        if: steps.cache-codeql-db.outputs.cache-hit == 'true'
+        run: |
+          set -euo pipefail
+          corrupted=false
+
+          # Simple corruption check: CodeQL DB folder should exist and not be empty.
+          if [ ! -d "${{ runner.temp }}/codeql_databases" ] || [ -z "$(ls -A '${{ runner.temp }}/codeql_databases')" ]; then
+            echo "::warning::CodeQL cache appears corrupted or empty; clearing cache directories to force rebuild."
+            corrupted=true
+          fi
+
+          if [ "$corrupted" = "true" ]; then
+            rm -rf "${{ runner.temp }}/codeql_databases" "${{ runner.temp }}/trapCaches"
+          fi
+
+          echo "corrupted=$corrupted" >> "$GITHUB_OUTPUT"
+
+      - name: Skip cache restore if corruption detected
+        if: steps.validate-codeql-cache.outputs.corrupted == 'true'
+        run: |
+          echo "::notice::Running with clean CodeQL database after cache corruption."
       # Cache the CodeQL autobuild working directory for C/C++ to avoid rebuilding from scratch.
       - name: Cache CodeQL autobuild directory
         if: matrix.language == 'c-cpp'
