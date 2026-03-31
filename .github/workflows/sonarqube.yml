@@ -35,64 +35,27 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build build-essential pkg-config libsqlite3-dev libssl-dev uuid-dev
 
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v3
-        with:
-          dotnet-version: "8.0.x"
-
       - name: Cache SonarQube scanner plugins
         uses: actions/cache@v4
         with:
           path: ~/.sonar/cache
-          key: sonar-plugin-cache-${{ runner.os }}-${{ hashFiles('**/dotnet-tools.json') }}
-          restore-keys: |
-            sonar-plugin-cache-${{ runner.os }}-
-
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-
-
-      - name: Install SonarScanner for .NET
-        run: |
-          dotnet tool install --global dotnet-sonarscanner
-          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+          key: sonar-plugin-cache-${{ runner.os }}
+          restore-keys: sonar-plugin-cache-${{ runner.os }}-
 
       - name: Configure CMake (generates compile_commands.json)
-        run: |
-          mkdir -p build
-          cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        run: cmake -B build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-      - name: SonarScanner begin
+      - uses: SonarSource/sonarqube-scan-action@v7
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-        run: |
-          dotnet sonarscanner begin \
-            /k:"$SONAR_PROJECT_KEY" \
-            /n:"dsos" \
-            /d:sonar.host.url="$SONAR_HOST_URL" \
-            /d:sonar.token="$SONAR_TOKEN" \
-            /d:sonar.scanner.scanAll=true \
-            /d:sonar.projectBaseDir="${{ github.workspace }}" \
-            /d:sonar.sources=. \
-            /d:sonar.exclusions="Source/ThirdParty/**,Protobuf/**,build/**,**/*.java" \
-            /d:sonar.cfamily.compile-commands="build/compile_commands.json" \
-            /d:sonar.cfamily.threads=4 \
-            /d:sonar.sourceEncoding=UTF-8 \
-            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
-            /d:sonar.verbose=true
-
-      - name: Build .NET project (for C# analysis)
-        run: |
-          dotnet build Source/Loader/Loader.csproj -c Release /p:EnableWindowsTargeting=true
-
-      - name: SonarScanner end
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: |
-          dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+        with:
+          args: >
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
+            -Dsonar.projectName=dsos
+            -Dsonar.sources=.
+            -Dsonar.exclusions=Source/ThirdParty/**,Protobuf/**,build/**
+            -Dsonar.cfamily.compile-commands=build/compile_commands.json
+            -Dsonar.cfamily.threads=4
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.verbose=true
