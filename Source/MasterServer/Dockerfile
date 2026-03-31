@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # install only production dependencies, clean npm cache, install curl, create unprivileged user and take ownership
-RUN npm ci --only=production \
+RUN if [ -f package-lock.json ]; then npm ci --only=production; else npm install --only=production; fi \
     && npm cache clean --force \
     && apk add --no-cache curl \
     && addgroup -S master && adduser -S master -G master \

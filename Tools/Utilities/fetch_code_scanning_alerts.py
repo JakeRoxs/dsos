@@ -8,7 +8,9 @@ open alerts on GitHub or SonarQube. It supports:
 - `--source sonarqube` using SonarQube API (`/api/issues/search`)
 - SonarQube config via CLI args or `mcp.json` (`servers.sonarqube.env.SONARQUBE_*`)
 - Fallback to `sonar-project.properties` for `sonar.projectKey`
+- `--group-by rule` (default) to group by rule names across repositories
 - `--group-by thirdparty` to use repository name (e.g. `dsos`) for in-repo code, and library folder for `Source/ThirdParty`
+- `--group-by thirdparty_rule` to group by vendor+rule
 - De-dup/update behavior: existing todo file is updated if content changed, otherwise left alone
 
 Usage:
@@ -341,7 +343,7 @@ def run_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--group-by",
-        default="thirdparty_rule",
+        default="rule",
         choices=["rule", "path", "severity", "thirdparty", "thirdparty_rule"],
         help="How to group alerts when generating todo items",
     )
