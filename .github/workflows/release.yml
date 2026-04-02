@@ -16,8 +16,6 @@ permissions:
   contents: read
 
 env:
-  # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: ./intermediate/vs2022/rekindled-server.sln
   BUILD_CONFIGURATION: Release
 
   # Version number being built.
@@ -32,6 +30,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    env:
+      LOADER_PROJECT_PATH: Source/Loader/Loader.csproj
+      LOADER_TESTS_PROJECT_PATH: Source/Loader.Tests/Loader.Tests.csproj
     strategy:
       fail-fast: false
       matrix:
@@ -72,8 +73,8 @@ jobs:
         if: matrix.name == 'windows-ninja'
         shell: cmd
         run: |
-          if exist intermediate\vs2022\CMakeCache.txt del /f /q intermediate\vs2022\CMakeCache.txt
-          if exist intermediate\vs2022\CMakeFiles rmdir /s /q intermediate\vs2022\CMakeFiles
+          if exist intermediate\build\CMakeCache.txt del /f /q intermediate\build\CMakeCache.txt
+          if exist intermediate\build\CMakeFiles rmdir /s /q intermediate\build\CMakeFiles
 
       - name: Generate build files (Windows)
         if: matrix.name == 'windows-ninja'
@@ -94,14 +95,14 @@ jobs:
             )
           )
           cd "%GITHUB_WORKSPACE%\Tools"
-          "%GITHUB_WORKSPACE%\Tools\generate_vs2022.bat"
+          "%GITHUB_WORKSPACE%\Tools\generate_build.bat"
 
       - name: Report dependency fetch status (Windows)
         if: matrix.name == 'windows-ninja'
         shell: cmd
         run: |
-          if exist intermediate\vs2022\dependency-fetch-status.txt (
-            type intermediate\vs2022\dependency-fetch-status.txt
+          if exist intermediate\build\dependency-fetch-status.txt (
+            type intermediate\build\dependency-fetch-status.txt
           ) else (
             echo "(dependency-fetch-status.txt not found)"
           )
@@ -121,14 +122,25 @@ jobs:
         if: matrix.name == 'windows-ninja'
         uses: microsoft/setup-msbuild@v3
 
-      - name: Restore NuGet packages (Windows)
+      - name: Restore Loader NuGet packages
         if: matrix.name == 'windows-ninja'
-        working-directory: ${{github.workspace}}
-        run: dotnet restore ${{env.SOLUTION_FILE_PATH}}
+        run: dotnet restore ${{ env.LOADER_PROJECT_PATH }}
+
+      - name: Build Loader project
+        if: matrix.name == 'windows-ninja'
+        run: dotnet build ${{ env.LOADER_PROJECT_PATH }} --configuration Release --no-restore
+
+      - name: Build Loader tests project
+        if: matrix.name == 'windows-ninja'
+        run: dotnet build ${{ env.LOADER_TESTS_PROJECT_PATH }} --configuration Release --no-restore
+
+      - name: Run Loader tests
+        if: matrix.name == 'windows-ninja'
+        run: dotnet test ${{ env.LOADER_TESTS_PROJECT_PATH }} --configuration Release --verbosity normal
 
       - name: Build on Windows (Ninja)
         if: matrix.name == 'windows-ninja'
-        working-directory: ${{github.workspace}}/intermediate/vs2022
+        working-directory: ${{ github.workspace }}/intermediate/build
         shell: cmd
         run: |
           for /f "delims=" %%V in ('"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath') do set "VS_INSTALL_DIR=%%V"
@@ -171,7 +183,7 @@ jobs:
 
       - name: Build on Linux (Ninja)
         if: matrix.name == 'linux-ninja'
-        working-directory: ${{github.workspace}}/intermediate/make
+        working-directory: ${{ github.workspace }}/intermediate/make
         run: ninja -j$(nproc)
 
       - name: Package Release (Windows)
@@ -239,7 +251,6 @@ jobs:
           file: ${{ matrix.image.file }}
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image.tag }}
-          # Enable BuildKit cache storage between workflow runs
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

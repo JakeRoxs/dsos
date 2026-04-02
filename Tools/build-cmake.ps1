@@ -86,19 +86,17 @@ if (-not $Generator) {
                 Write-Host "Using generator from GENERATOR env var: $Generator"
             }
             else {
-                # Match the behavior of generate_vs2022.bat default generator.
-                $Generator = 'Visual Studio 17 2022'
-                Write-Host "Using default Visual Studio generator: $Generator"
+                $message = "No supported CMake generator detected. Install Ninja or Visual Studio with C++ workload, or pass -Generator explicitly."
+                Write-Host "ERROR: $message" -ForegroundColor Red
+                throw $message
             }
         }
     }
 }
 
-if (-not $Generator) {
-    Write-Host "ERROR: No supported CMake generator found (Ninja or Visual Studio)." -ForegroundColor Red
-    Write-Host "Install Ninja (https://ninja-build.org) or Visual Studio with C++ workload, then rerun with -Generator."
-    throw "Generator detection failed"
-}
+# At this point we either have a valid generator or we have already thrown an error.
+# No further generator check is required.
+
 
 if ($Clean -and (Test-Path $BuildDir)) {
     Write-Host "Cleaning existing build folder: $BuildDir"

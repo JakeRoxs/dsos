@@ -2,16 +2,16 @@
 
 set OUTPUT_ROOT=Bin\x64_release
 if not exist "%OUTPUT_ROOT%" (
-    if exist "intermediate\vs2022\bin\x64_release" set OUTPUT_ROOT=intermediate\vs2022\bin\x64_release
+    if exist "intermediate\build\bin\x64_release" set OUTPUT_ROOT=intermediate\build\bin\x64_release
 )
 if not exist "%OUTPUT_ROOT%" (
-    if exist "intermediate\vs2022\Source\Server" set OUTPUT_ROOT=intermediate\vs2022\Source\Server
+    if exist "intermediate\build\Source\Server" set OUTPUT_ROOT=intermediate\build\Source\Server
 )
 if not exist "%OUTPUT_ROOT%" (
-    if exist "intermediate\vs2022\Source\Server.DarkSouls3" set OUTPUT_ROOT=intermediate\vs2022\Source\Server.DarkSouls3
+    if exist "intermediate\build\Source\Server.DarkSouls3" set OUTPUT_ROOT=intermediate\build\Source\Server.DarkSouls3
 )
 if not exist "%OUTPUT_ROOT%" (
-    if exist "intermediate\vs2022\Source\Server.DarkSouls2" set OUTPUT_ROOT=intermediate\vs2022\Source\Server.DarkSouls2
+    if exist "intermediate\build\Source\Server.DarkSouls2" set OUTPUT_ROOT=intermediate\build\Source\Server.DarkSouls2
 )
 
 echo Using package source output path: %OUTPUT_ROOT%
@@ -51,25 +51,25 @@ if exist "%OUTPUT_ROOT%\WebUI" (
 )
 if exist "%OUTPUT_ROOT%\Server.exe" (
     xcopy /s "%OUTPUT_ROOT%\Server.exe" rekindled-server\Server\
-) else if exist "intermediate\vs2022\Source\Server\Server.exe" (
-    xcopy /s "intermediate\vs2022\Source\Server\Server.exe" rekindled-server\Server\
+) else if exist "intermediate\build\Source\Server\Server.exe" (
+    xcopy /s "intermediate\build\Source\Server\Server.exe" rekindled-server\Server\
 ) else (
-    echo WARNING: Server.exe not found in %OUTPUT_ROOT% or intermediate\vs2022\Source\Server
+    echo WARNING: Server.exe not found in %OUTPUT_ROOT% or intermediate\build\Source\Server
     set ERR=1
 )
 if exist "%OUTPUT_ROOT%\Server.pdb" (
     xcopy /s "%OUTPUT_ROOT%\Server.pdb" rekindled-server\Server\
-) else if exist "intermediate\vs2022\Source\Server\Server.pdb" (
-    xcopy /s "intermediate\vs2022\Source\Server\Server.pdb" rekindled-server\Server\
+) else if exist "intermediate\build\Source\Server\Server.pdb" (
+    xcopy /s "intermediate\build\Source\Server\Server.pdb" rekindled-server\Server\
 ) else (
-    echo WARNING: Server.pdb not found in %OUTPUT_ROOT% or intermediate\vs2022\Source\Server
+    echo WARNING: Server.pdb not found in %OUTPUT_ROOT% or intermediate\build\Source\Server
     set ERR=1
 )
 
 if exist "%OUTPUT_ROOT%\Injector.pdb" (
     xcopy /s "%OUTPUT_ROOT%\Injector.pdb" rekindled-server\Loader\
-) else if exist "intermediate\vs2022\Source\Injector\Injector.pdb" (
-    xcopy /s "intermediate\vs2022\Source\Injector\Injector.pdb" rekindled-server\Loader\
+) else if exist "intermediate\build\Source\Injector\Injector.pdb" (
+    xcopy /s "intermediate\build\Source\Injector\Injector.pdb" rekindled-server\Loader\
 ) else if exist "Source\Injector\bin\x64_release\Injector.pdb" (
     xcopy /s "Source\Injector\bin\x64_release\Injector.pdb" rekindled-server\Loader\
 ) else if exist "build\Source\Injector\Injector.pdb" (
@@ -80,8 +80,8 @@ if exist "%OUTPUT_ROOT%\Injector.pdb" (
 )
 if exist "%OUTPUT_ROOT%\Injector.dll" (
     xcopy /s "%OUTPUT_ROOT%\Injector.dll" rekindled-server\Loader\
-) else if exist "intermediate\vs2022\Source\Injector\Injector.dll" (
-    xcopy /s "intermediate\vs2022\Source\Injector\Injector.dll" rekindled-server\Loader\
+) else if exist "intermediate\build\Source\Injector\Injector.dll" (
+    xcopy /s "intermediate\build\Source\Injector\Injector.dll" rekindled-server\Loader\
 ) else if exist "Source\Injector\bin\x64_release\Injector.dll" (
     xcopy /s "Source\Injector\bin\x64_release\Injector.dll" rekindled-server\Loader\
 ) else if exist "build\Source\Injector\Injector.dll" (

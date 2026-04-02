@@ -12,7 +12,7 @@ if not exist "%RootPath%" (
     exit /b 1
 )
 
-SET BuildPath=%RootPath%\intermediate\vs2022
+SET BuildPath=%RootPath%\intermediate\build
 if not exist "%BuildPath%" (
     echo Creating build directory: %BuildPath%
     mkdir "%BuildPath%" 2>nul || (
@@ -55,21 +55,12 @@ if not exist "%CMakeExePath%" (
 echo Using CMake executable: %CMakeExePath%
 
 REM Optional: override the CMake generator via the GENERATOR environment variable.
-REM If GENERATOR is not set, default to the Visual Studio 17 2022 generator.
-REM Example: set "GENERATOR=Ninja" before running this script to generate Ninja build files
-REM (Ninja must be installed and available on PATH or otherwise discoverable by CMake).
+REM If GENERATOR is not set, default to Ninja for this repo.
 if "%GENERATOR%"=="" (
-    set "GENERATOR=Visual Studio 17 2022"
+    set "GENERATOR=Ninja"
 )
 
 echo Generating %RootPath%
 echo %CMakeExePath% -S %RootPath% -B %BuildPath% -G "%GENERATOR%"
 
 "%CMakeExePath%" -S "%RootPath%" -B "%BuildPath%" -G "%GENERATOR%"
-
-REM Ensure the solution file is the new branded name.
-if exist "%BuildPath%\rekindled-server.sln" (
-    echo Found rekindled-server.sln
-) else (
-    echo ERROR: rekindled-server.sln not found
-)

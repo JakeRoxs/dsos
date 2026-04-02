@@ -52,7 +52,7 @@ jobs:
         with:
           args: >
             -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY }}
-            -Dsonar.projectName=Rekindled Server
+            -Dsonar.projectName="Rekindled Server"
             -Dsonar.sources=.
             -Dsonar.exclusions=Source/ThirdParty/**,Protobuf/**,build/**
             -Dsonar.cfamily.compile-commands=build/compile_commands.json

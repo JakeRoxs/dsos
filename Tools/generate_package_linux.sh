@@ -2,7 +2,15 @@
 
 OUTPUT_ROOT="bin/x64_release"
 if [ ! -d "$OUTPUT_ROOT" ]; then
-  if [ -d "intermediate/make/bin/x64_release" ]; then
+  if [ -d "intermediate/build/bin/x64_release" ]; then
+    OUTPUT_ROOT="intermediate/build/bin/x64_release"
+  elif [ -d "intermediate/build/Source/Server" ]; then
+    OUTPUT_ROOT="intermediate/build/Source/Server"
+  elif [ -d "intermediate/build/Source/Server.DarkSouls3" ]; then
+    OUTPUT_ROOT="intermediate/build/Source/Server.DarkSouls3"
+  elif [ -d "intermediate/build/Source/Server.DarkSouls2" ]; then
+    OUTPUT_ROOT="intermediate/build/Source/Server.DarkSouls2"
+  elif [ -d "intermediate/make/bin/x64_release" ]; then
     OUTPUT_ROOT="intermediate/make/bin/x64_release"
   elif [ -d "intermediate/make/Source/Server" ]; then
     OUTPUT_ROOT="intermediate/make/Source/Server"
