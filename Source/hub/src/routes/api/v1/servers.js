@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -64,8 +65,8 @@ const censors = [];
 // This can be overridden via the SHARDING_ALLOWLIST environment variable (comma-separated).
 const shardingAllowList = (function () {
     const defaults = [
-        "https://ds2os.jakeesws.xyz",
-        "https://ds3os.jakesws.xyz",
+        "https://rekindled-ds2s.jakeesws.xyz",
+        "https://rekindled-ds3.jakeesws.xyz",
     ];
 
     const env = process.env.SHARDING_ALLOWLIST;

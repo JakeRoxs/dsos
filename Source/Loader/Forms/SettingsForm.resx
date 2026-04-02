@@ -158,7 +158,7 @@
     <value>1</value>
   </data>
   <data name="label1.Text" xml:space="preserve">
-    <value>This makes the game uses a seperate set of save files from those you use when connecting to the retail server. This is an added layer of protection to prevent your account being banned on the retail servers if you do anything on dsos servers that would flag you as cheating.
+    <value>This makes the game uses a seperate set of save files from those you use when connecting to the retail server. This is an added layer of protection to prevent your account being banned on the retail servers if you do anything on Rekindled Server that would flag you as cheating.
 
 Be careful turning this off.
 </value>
@@ -188,7 +188,7 @@ Be careful turning this off.
     <value>SettingsForm</value>
   </data>
   <data name="CopySavesButton.Text" xml:space="preserve">
-    <value>Copy Retail Saves to DSOS</value>
+    <value>Copy Retail Saves to Rekindled Server</value>
   </data>
   <data name="&gt;&gt;UseSeperateSavesCheckbox.ZOrder" xml:space="preserve">
     <value>2</value>

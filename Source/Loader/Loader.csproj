@@ -7,14 +7,15 @@
     <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <RollForward>LatestMinor</RollForward>
     <ApplicationIcon>icon.ico</ApplicationIcon>
-    <PackageId>Dark Souls III - Open Server Launcher</PackageId>
-    <Product>Dark Souls III - Open Server Launcher</Product>
+    <PackageId>Rekindled Server Launcher</PackageId>
+    <Product>Rekindled Server Launcher</Product>
     <Authors>Tim Leonard</Authors>
-    <Description>Application used for launching Dark Souls III in a way that it connects to unofficial servers.</Description>
-    <PackageProjectUrl>https://github.com/jakeroxs/ds3os</PackageProjectUrl>
+    <Description>Application used for launching Dark Souls III in a way that it connects to Rekindled Server - an unofficial open source server implementation.</Description>
+    <PackageProjectUrl>https://github.com/jakeroxs/rekindled-server</PackageProjectUrl>
     <Version>1.0.0.2</Version>
     <FileVersion>1.0.0.3</FileVersion>
-    <Copyright>Copyright (C) 2021 Tim Leonard</Copyright>
+    <Copyright>Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson</Copyright>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
   </PropertyGroup>

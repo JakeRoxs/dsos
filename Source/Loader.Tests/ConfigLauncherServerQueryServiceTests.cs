@@ -91,7 +91,7 @@ namespace Loader.Tests
 
         private class TestableServerQueryService : Loader.Services.ServerQueryService
         {
-            protected override Task<List<ServerConfig>?> QueryServersFromMasterAsync(CancellationToken cancellationToken)
+            protected override Task<List<ServerConfig>?> QueryServersFromHubAsync(CancellationToken cancellationToken)
             {
                 return Task.FromResult<List<ServerConfig>?>(new List<ServerConfig> { new ServerConfig { Name = "demo" } });
             }

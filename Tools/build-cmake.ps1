@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Helper script to configure and build dsos with sane generator fallback.
+  Helper script to configure and build rekindled-server with sane generator fallback.
 .DESCRIPTION
   Detects Ninja and Visual Studio (via vswhere), or uses explicit -Generator parameter.
   Ensures out-of-source build and portable defaults for local dev and CI.

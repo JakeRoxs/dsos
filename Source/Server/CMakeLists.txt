@@ -1,6 +1,7 @@
 # ================================================================================================
-#  DS3OS
+#  Rekindled Server
 #  Copyright (C) 2021 Tim Leonard
+#  Copyright (C) 2026 Jake Morgeson
 # ================================================================================================
 
 project(Server C CXX)
@@ -162,14 +163,14 @@ if(NOT TARGET sqlite)
     message(STATUS "CMake cache entries: SQLite3_FOUND=${SQLite3_FOUND} SQLite3_LIBRARIES='${SQLite3_LIBRARIES}' SQLite3_LIBRARY='${SQLite3_LIBRARY}' SQLite3_INCLUDE_DIRS='${SQLite3_INCLUDE_DIRS}' SQLite3_INCLUDE_DIR='${SQLite3_INCLUDE_DIR}'")
     message(FATAL_ERROR "Missing required SQLite target `sqlite`. Ensure ThirdParty is configured correctly or that a system SQLite is available.")
 endif()
-set(DSOS_SQLITE_TARGET sqlite)
+set(REKINDLED_SQLITE_TARGET sqlite)
 
 # Diagnostic output for CI: show which SQLite target we will link.
-message(STATUS "Using SQLite link target: ${DSOS_SQLITE_TARGET}")
-if(TARGET ${DSOS_SQLITE_TARGET})
-    get_target_property(_DSOS_SQLITE_LOCATION ${DSOS_SQLITE_TARGET} IMPORTED_LOCATION)
-    if(_DSOS_SQLITE_LOCATION)
-        message(STATUS "${DSOS_SQLITE_TARGET} IMPORTED_LOCATION = ${_DSOS_SQLITE_LOCATION}")
+message(STATUS "Using SQLite link target: ${REKINDLED_SQLITE_TARGET}")
+if(TARGET ${REKINDLED_SQLITE_TARGET})
+    get_target_property(_REKINDLED_SQLITE_LOCATION ${REKINDLED_SQLITE_TARGET} IMPORTED_LOCATION)
+    if(_REKINDLED_SQLITE_LOCATION)
+        message(STATUS "${REKINDLED_SQLITE_TARGET} IMPORTED_LOCATION = ${_REKINDLED_SQLITE_LOCATION}")
     endif()
 endif()
 
@@ -180,7 +181,7 @@ target_link_libraries(
     Shared
     civetweb
     libprotobuf-lite
-    ${DSOS_SQLITE_TARGET}
+    ${REKINDLED_SQLITE_TARGET}
     steam
 )
 
@@ -208,7 +209,7 @@ foreach(config ${CMAKE_CONFIGURATION_TYPES})
     endif()
 endforeach()
 
-util_setup_folder_structure(${PROJECT_NAME} SOURCES "DS3OS")
+util_setup_folder_structure(${PROJECT_NAME} SOURCES "Rekindled Server")
 
 #-----------------------------------------------------------------------------#
 # Client emulator config unit tests

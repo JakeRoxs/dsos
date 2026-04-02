@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -172,7 +173,7 @@ void WriteToConsole(ConsoleColor Color, const char* Message)
         if (GetTempPathA(MAX_PATH, tempPath) > 0)
         {
             char logPath[MAX_PATH];
-            snprintf(logPath, MAX_PATH, "%sds3os_injector.log", tempPath);
+            snprintf(logPath, MAX_PATH, "%srekindled_injector.log", tempPath);
             g_LogFile = fopen(logPath, "a");
         }
     }

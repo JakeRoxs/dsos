@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -22,7 +23,7 @@ bool PropertyListParser::Parse(const std::vector<uint8_t>& data, PropertyList& o
         static size_t counter = 0;
 
         char buffer[256];
-        snprintf(buffer, sizeof(buffer), "Z:\\ds3os\\Temp\\BloodMessageData\\%i.dat", counter++);
+        snprintf(buffer, sizeof(buffer), "Z:\\rekindled-server\\Temp\\BloodMessageData\\%i.dat", counter++);
 
         WriteBytesToFile(buffer, data);
 

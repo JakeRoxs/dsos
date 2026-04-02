@@ -1,14 +1,14 @@
--------------------------------------------------------------------------
- Dark Souls - Open Server
- https://github.com/jakeroxs/ds3os
--------------------------------------------------------------------------
+ -------------------------------------------------------------------------
+  Rekindled Server - Dark Souls Open Server Implementation
+  https://github.com/jakeroxs/rekindled-server
+ -------------------------------------------------------------------------
 
 Before running any executables, please install the files in Prerequisites 
 first, these are C++ runtimes required to run the executables, without 
 them they may not run.
 
-For up to date documentation please read the information on the github readme.
-https://github.com/jakeroxs/ds3os
+ For up to date documentation please read the information on the github readme.
+ https://github.com/jakeroxs/rekindled-server
 
 Contained within are 2 folders:
 

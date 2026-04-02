@@ -38,7 +38,7 @@
   "Password": "密码",
   "Private Hostname": "内网IP",
   "Public Hostname": "公网IP",
-  "Advertise On Master Server": "推送到主服务器",
+  "Advertise On Hub Server": "推送到集线器服务器",
   "Disable Co-Op": "禁用合作模式",
   "Disable Blood Messages": "禁用血迹信息",
   "Disable Blood Stains": "禁用血迹",

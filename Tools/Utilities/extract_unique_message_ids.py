@@ -1,6 +1,6 @@
 import os
 
-message_path = "Z:\ds3os\Temp\MessageId_Trace"
+message_path = "Z:\\rekindled-server\\Temp\\MessageId_Trace"
 
 unique_ids = {}
 

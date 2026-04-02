@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -27,15 +28,15 @@ namespace
 
         const std::string extension_sl2 = ".sl2";
         const std::string extension_sl2_bak = ".sl2.bak";
-        const std::string extension_ds3os = ".ds3os";
+        const std::string extension_rds = ".rds";
 
         if (StringEndsWith(filename, extension_sl2))
         {
-            filename = filename.substr(0, filename.size() - extension_sl2.size()) + extension_ds3os;
+            filename = filename.substr(0, filename.size() - extension_sl2.size()) + extension_rds;
         }
         else if (StringEndsWith(filename, extension_sl2_bak))
         {
-            filename = filename.substr(0, filename.size() - extension_sl2_bak.size()) + extension_ds3os;
+            filename = filename.substr(0, filename.size() - extension_sl2_bak.size()) + extension_rds;
         }
 
         std::wstring new_filename = WidenString(filename);

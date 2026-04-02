@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license. 
  * You should have received a copy of the license along with this program. 
@@ -29,24 +30,24 @@ struct ConsoleScope
         if (!AllocConsole())
         {
             // Continue without a console; output may not be visible.
-            OutputDebugStringA("ds3os: failed to allocate console\n");
+            OutputDebugStringA("rekindled-server: failed to allocate console\n");
             return;
         }
 
         if (errno_t Err = freopen_s(&dummy, "CONIN$", "r", stdin); Err != 0)
         {
             Error("Failed to redirect stdin to console (error=%d)", Err);
-            OutputDebugStringA("ds3os: failed to redirect stdin to console\n");
+            OutputDebugStringA("rekindled-server: failed to redirect stdin to console\n");
         }
         if (errno_t Err = freopen_s(&dummy, "CONOUT$", "w", stderr); Err != 0)
         {
             Error("Failed to redirect stderr to console (error=%d)", Err);
-            OutputDebugStringA("ds3os: failed to redirect stderr to console\n");
+            OutputDebugStringA("rekindled-server: failed to redirect stderr to console\n");
         }
         if (errno_t Err = freopen_s(&dummy, "CONOUT$", "w", stdout); Err != 0)
         {
             Error("Failed to redirect stdout to console (error=%d)", Err);
-            OutputDebugStringA("ds3os: failed to redirect stdout to console\n");
+            OutputDebugStringA("rekindled-server: failed to redirect stdout to console\n");
         }
     }
 
@@ -90,7 +91,7 @@ void main()
     Log(R"--(\____/ .___/\___/_/ /_/   /____/\___/_/    |___/\___/_/       )--");
     Log(R"--(    /_/                                                       )--");
     Log("");
-    Log("https://github.com/jakeroxs/ds3os");
+    Log("https://github.com/jakeroxs/rekindled-server");
     Log("");
 
     struct PlatformScope
@@ -103,7 +104,7 @@ void main()
     if (!platformScope.Initialized)
     {
         Error("Failed to initialize platform specific functionality.");
-        MessageBoxA(nullptr, "Failed to initialize DS3OS platform components.\n\nGame will now be terminated to avoid playing on a partially patched game which may trigger bans.", "DS3OS Error", MB_OK|MB_ICONEXCLAMATION);
+        MessageBoxA(nullptr, "Failed to initialize Rekindled Server platform components.\n\nGame will now be terminated to avoid playing on a partially patched game which may trigger bans.", "Rekindled Server Error", MB_OK|MB_ICONEXCLAMATION);
         std::abort();
     }
 
@@ -112,7 +113,7 @@ void main()
     if (!InjectorInstance.Init())
     {
         Error("Injector failed to initialize.");
-        MessageBoxA(nullptr, "Failed to initialize DS3OS.\n\nGame will now be terminated to avoid playing on a partially patched game which may trigger bans.", "DS3OS Error", MB_OK|MB_ICONEXCLAMATION);
+        MessageBoxA(nullptr, "Failed to initialize Rekindled Server.\n\nGame will now be terminated to avoid playing on a partially patched game which may trigger bans.", "Rekindled Server Error", MB_OK|MB_ICONEXCLAMATION);
         std::abort();
     }
 

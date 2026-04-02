@@ -37,7 +37,7 @@ let
     };
 
     pkg = stdenv.mkDerivation rec {
-        name = "ds3os";
+        name = "rekindled-server";
 
         src = with fileset; toSource {
             root = ./.;
@@ -52,8 +52,8 @@ let
         installPhase = ''
             install -Dm755 ../bin/x64_release/libsteam_api.so $out/lib/libsteam_api.so
             install -Dm755 ../bin/x64_release/Server $out/bin/Server
-            mkdir -p $out/share/ds3os
-            cp -R ../bin/x64_release/WebUI $out/share/ds3os/WebUI
+            mkdir -p $out/share/rekindled-server
+            cp -R ../bin/x64_release/WebUI $out/share/rekindled-server/WebUI
             '';
 
         # google's generated protobuf headers puts absolute file path garbage into the binaries
@@ -70,32 +70,33 @@ let
             # Prefer using FetchContent to download third-party sources at configure time
             # (falls back to system libraries if available).
             # When using Nix, supply the pre-fetched archive paths so CMake doesn't need network access.
-            "-DDSOS_CIVETWEB_ARCHIVE=file://${civetwebArchive}"
-            "-DDSOS_OPENSSL_ARCHIVE=file://${opensslArchive}"
-            "-DDSOS_CURL_ARCHIVE=file://${curlArchive}"
+            "-DREKINDLED_CIVETWEB_ARCHIVE=file://${civetwebArchive}"
+            "-DREKINDLED_OPENSSL_ARCHIVE=file://${opensslArchive}"
+            "-DREKINDLED_CURL_ARCHIVE=file://${curlArchive}"
         ];
 
         # Can't pass multiple flags through cmakeFlags *sigh*
+        # TODO: Nixpkgs now supports spaces in cmakeFlags when __structuredAttrs = true, so multiple flags can be passed.
         # https://github.com/NixOS/nixpkgs/issues/114044
-        # Though these really should be fixed in ds3os itself
+        # Though these really should be fixed in rekindled itself
         NIX_CFLAGS_COMPILE = [ "-Wno-format-security" "-Wno-non-pod-varargs" ];
 
         meta = {
-            homepage = "https://github.com/jakeroxs/ds3os";
+            homepage = "https://github.com/jakeroxs/rekindled-server";
             license = licenses.mit;
             platforms = [ "x86_64-linux" ];
         };
     };
 in writeShellApplication {
     runtimeInputs = [ jq ];
-    name = "ds3os";
+    name = "rekindled-server";
     text = ''
         tmp="$(mktemp -d)"
         trap 'rm -rf "$tmp"' EXIT
         cd "$tmp"
 
         export LD_LIBRARY_PATH="${pkg}/lib:''${LD_LIBRARY_PATH:-}"
-        config="''${XDG_CONFIG_HOME:-$HOME/.config/ds3os}"
+        config="''${XDG_CONFIG_HOME:-$HOME/.config/rekindled-server}"
         mkdir -p "$config"
 
         if [[ -f "$config/default/config.json" ]]; then
@@ -113,7 +114,7 @@ in writeShellApplication {
                 ;;
         esac
 
-        ln -sf "${pkg}/share/ds3os/WebUI" .
+        ln -sf "${pkg}/share/rekindled-server/WebUI" .
         ln -sf "${pkg}/bin/Server" .
         ln -sf "$config" Saved
         exec ./Server "$@"

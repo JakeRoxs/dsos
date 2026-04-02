@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -55,7 +56,7 @@ Server::Server(const std::string& InServerId, const std::string& InServerName, c
     SavedPath = std::filesystem::current_path() / std::filesystem::path("Saved") / InServerId;
     if constexpr (BuildConfig::SUPPORT_LEGACY_IMPORT_FILES)
     {
-        Ds3osconfigPath = SavedPath / std::filesystem::path("server.ds3osconfig");
+        RekindledConfigPath = SavedPath / std::filesystem::path("server.rekindledconfig");
     }
     ConfigPath = SavedPath / std::filesystem::path("config.json");
     DatabasePath = SavedPath / std::filesystem::path("database.sqlite");
@@ -190,13 +191,13 @@ bool Server::Init()
     // Patch old server ip.
 #ifdef _DEBUG
     //Config.MasterServerIp = "127.0.0.1";
-    Config.MasterServerIp = "dsos.jakesws.xyz";
+    Config.MasterServerIp = "rekindled.jakesws.xyz";
     //Config.ServerName = "Debugging Server";
     //Config.ServerDescription = "Used for debugging by Infini, don't use.";
 #else
     if (Config.MasterServerIp == "jakesws.xyz")
     {
-        Config.MasterServerIp = "dsos.jakesws.xyz";
+        Config.MasterServerIp = "rekindled.jakesws.xyz";
     }
 #endif
 
@@ -300,9 +301,9 @@ bool Server::Init()
         Output["ModsBlacklist"]     = Config.ModsBlacklist;
         Output["ModsRequiredList"]  = Config.ModsRequiredList;
 
-        if (!WriteTextToFile(Ds3osconfigPath, Output.dump(4)))
+        if (!WriteTextToFile(RekindledConfigPath, Output.dump(4)))
         {
-            Error("Failed to write ds3osconfig file to: %s", Ds3osconfigPath.string().c_str());
+            Error("Failed to write rekindledconfig file to: %s", RekindledConfigPath.string().c_str());
             return false;
         }
     }

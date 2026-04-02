@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -96,7 +97,7 @@ bool Frpg2UdpPacketStream::Pump()
             if (!dumped && Connection->IsConnected())
             {
                 dumped = true;
-                WriteBytesToFile("Z:\\ds3os\\Research\\Packet Traces\\game_login_compare\\from-game.dat", Packet.Payload);
+                WriteBytesToFile("Z:\\rekindled-server\\Research\\Packet Traces\\game_login_compare\\from-game.dat", Packet.Payload);
             }*/
 
             ReceiveQueue.push_back(Packet);

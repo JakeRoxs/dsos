@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license. 
  * You should have received a copy of the license along with this program. 
@@ -67,7 +68,7 @@ namespace Loader
         HttpResponseMessage Response = Client.Send(Request);
         if (!Response.IsSuccessStatusCode)
         {
-          Debug.WriteLine("Got error status when trying to query master server: {0}", Response.StatusCode);
+          Debug.WriteLine("Got error status when trying to query hub server: {0}", Response.StatusCode);
           return null;
         }
 
@@ -76,7 +77,7 @@ namespace Loader
         ResponseTask.Wait();
         if (!ResponseTask.IsCompletedSuccessfully)
         {
-          Debug.WriteLine("Got error status when trying to query master server.");
+          Debug.WriteLine("Got error status when trying to query hub server.");
           return null;
         }
 

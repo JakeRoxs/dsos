@@ -1,18 +1,18 @@
 services:
-  dsos-server-ds3:
-    image: jakeroxs/ds3os:latest # For Dark Souls 3 server
-    container_name: dsos-server-ds3
+  rekindled-ds3-server:
+    image: jakeroxs/rekindled-ds3-server:latest # For Dark Souls 3 server
+    container_name: rekindled-ds3-server
     ports:
       - "50000:50000/udp" # auth
       - "50010:50010/udp" # game
       - "50050:50050/udp" # login
       - "50005:50005" # admin WebUI
     volumes:
-      - ./Saved-ds3:/opt/ds3os/Saved
+      - ./Saved-ds3:/opt/rekindled-ds3-server/Saved
     # Optional environment variables (override values from config.json):
     # environment:
-    #   # Master server listing (defaults to dsos.jakesws.xyz:50020)
-    #   - MASTER_SERVER_IP=dsos-master
+    #   # Hub server listing (defaults to rekindled.jakesws.xyz:50020)
+    #   - MASTER_SERVER_IP=rekindled-hub
     #   - MASTER_SERVER_PORT=50020
     #
     #   # Server settings
@@ -45,20 +45,20 @@ services:
       timeout: 5s
       retries: 3
 
-  dsos-server-ds2: # For Dark Souls 2 server
-    image: jakeroxs/ds2os:latest
-    container_name: dsos-server-ds2
+  rekindled-ds2s-server: # For Dark Souls 2: Scholar of the First Sin server
+    image: jakeroxs/rekindled-ds2s-server:latest
+    container_name: rekindled-ds2s-server
     ports:
       - "51000:50000/udp" # auth
       - "51010:50010/udp" # game
       - "51050:50050/udp" # login
       - "51005:50005" # admin WebUI
     volumes:
-      - ./Saved-ds2:/opt/ds2os/Saved
+      - ./Saved-ds2:/opt/rekindled-ds2s-server/Saved
     # Optional environment variables (override values from config.json):
     # environment:
-    #   # Master server listing (defaults to dsos.jakesws.xyz:50020)
-    #   - MASTER_SERVER_IP=dsos-master
+    #   # Hub server listing (defaults to rekindled.jakesws.xyz:50020)
+    #   - MASTER_SERVER_IP=rekindled-hub
     #   - MASTER_SERVER_PORT=50020
     #
     #   # Server settings
@@ -91,17 +91,17 @@ services:
       timeout: 5s
       retries: 3
 
-  # dsos-master:                      # Uncomment if you need a standalone master server
-  #   image: jakeroxs/dsos-master:latest
-  #   container_name: dsos-master
+  # rekindled-hub:                 # Uncomment if you need a standalone hub server
+  #   image: jakeroxs/rekindled-hub:latest
+  #   container_name: rekindled-hub
   #   ports:
   #     - "50020:50020"
   #   environment:
-  #     # Optional overrides for master server settings (defaults are in config.json):
+  #     # Optional overrides for hub server settings (defaults are in config.json):
   #     - SHARDING_ALLOWLIST=192.168.1.50,192.168.1.51
-  #     - MASTER_SERVER_PORT=50020
-  #     - MASTER_SERVER_TIMEOUT_MS=240000
-  #     - MASTER_SERVER_WRITE_SECRET=your-secret
+  #     - HUB_SERVER_PORT=50020
+  #     - HUB_SERVER_TIMEOUT_MS=240000
+  #     - HUB_SERVER_WRITE_SECRET=your-secret
   #   restart: unless-stopped
   #   healthcheck:
   #     test: ["CMD-SHELL","curl -fsS http://localhost:50020/api/v1/servers || exit 1"]
@@ -110,4 +110,4 @@ services:
   #     retries: 3
   # By default the master server is disabled since most users just run the game server
   # Uncomment the above block or create a separate compose file if you want to host
-  # a public/master service alongside dsos-server.
+  # a public/master service alongside rekindled-ds3-server.

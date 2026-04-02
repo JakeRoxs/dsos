@@ -1,6 +1,7 @@
 # ================================================================================================
-#  DS3OS
+#  Rekindled Server
 #  Copyright (C) 2021 Tim Leonard
+#  Copyright (C) 2026 Jake Morgeson
 # ================================================================================================
 cmake_minimum_required(VERSION 3.20)
 
@@ -16,13 +17,13 @@ if(MSVC)
     include(CheckIncludeFileCXX)
     include(CheckLibraryExists)
 
-    check_include_file_cxx("Windows.h" DSOS_HAS_WINDOWS_H)
-    if(NOT DSOS_HAS_WINDOWS_H)
+    check_include_file_cxx("Windows.h" REKINDLED_HAS_WINDOWS_H)
+    if(NOT REKINDLED_HAS_WINDOWS_H)
         message(FATAL_ERROR "MSVC could not find Windows SDK headers. Install Windows 10/11 SDK and run from the Developer Command Prompt, or set CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION to a valid SDK version (e.g., 10.0.22621.0).")
     endif()
 
-    check_include_file_cxx("stdlib.h" DSOS_HAS_STDLIB_H)
-    if(NOT DSOS_HAS_STDLIB_H)
+    check_include_file_cxx("stdlib.h" REKINDLED_HAS_STDLIB_H)
+    if(NOT REKINDLED_HAS_STDLIB_H)
         message(FATAL_ERROR "MSVC could not find C runtime headers (stdlib.h). Ensure you run this from a Developer Command Prompt or that VCToolsInstallDir and WindowsSDKDir are correctly set in the environment. Example: \"C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/vcvars64.bat\".")
     endif()
 
@@ -47,8 +48,8 @@ if(MSVC)
         message(STATUS "Added fallback MSVC/Windows SDK library paths to CMAKE_LIBRARY_PATH")
     endif()
 
-    check_library_exists(kernel32 "GetModuleHandleA" "Windows.h" DSOS_HAS_KERNEL32)
-    if(NOT DSOS_HAS_KERNEL32)
+    check_library_exists(kernel32 "GetModuleHandleA" "Windows.h" REKINDLED_HAS_KERNEL32)
+    if(NOT REKINDLED_HAS_KERNEL32)
         message(FATAL_ERROR "MSVC could not find kernel32.lib. Ensure Windows SDK installation is complete and the Windows SDK lib path is available to MSVC.")
     endif()
 
@@ -73,12 +74,12 @@ if(NOT DEFINED CMAKE_POLICY_VERSION_MINIMUM)
     set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Minimum CMake policy version for legacy third-party deps")
 endif()
 
-project(ds3os C CXX)
+project(rekindled-server C CXX)
 
-option(DSOS_ALLOW_NON_NINJA "Allow non-Ninja generator to configure/build" OFF)
+option(REKINDLED_ALLOW_NON_NINJA "Allow non-Ninja generator to configure/build" OFF)
 
-if(NOT CMAKE_GENERATOR STREQUAL "Ninja" AND NOT DSOS_ALLOW_NON_NINJA)
-    message(FATAL_ERROR "dsos requires Ninja generator by default for consistent builds. Re-run CMake with -G Ninja, or set -DDSOS_ALLOW_NON_NINJA=ON to override.")
+if(NOT CMAKE_GENERATOR STREQUAL "Ninja" AND NOT REKINDLED_ALLOW_NON_NINJA)
+    message(FATAL_ERROR "Rekindled Server requires Ninja generator by default for consistent builds. Re-run CMake with -G Ninja, or set -DREKINDLED_ALLOW_NON_NINJA=ON to override.")
 endif()
 
 if(NOT CMAKE_C_COMPILER OR NOT CMAKE_CXX_COMPILER)
@@ -91,30 +92,30 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Export compile commands for IDE
 
 # Keep a stable IDE lookup location outside of the build folder
 # (root path is safer when `build/` gets removed by clean/reconfigure).
-set(DSOS_COMPILE_COMMANDS_SOURCE "${CMAKE_BINARY_DIR}/compile_commands.json")
-set(DSOS_COMPILE_COMMANDS_DEST "${CMAKE_SOURCE_DIR}/compile_commands.json")
+set(REKINDLED_COMPILE_COMMANDS_SOURCE "${CMAKE_BINARY_DIR}/compile_commands.json")
+set(REKINDLED_COMPILE_COMMANDS_DEST "${CMAKE_SOURCE_DIR}/compile_commands.json")
 
-set(DSOS_COMPILE_COMMANDS_SYNC_SCRIPT "${CMAKE_BINARY_DIR}/dsos_sync_compile_commands.cmake")
-file(WRITE "${DSOS_COMPILE_COMMANDS_SYNC_SCRIPT}"
-"if(EXISTS \"${DSOS_COMPILE_COMMANDS_SOURCE}\")\n"
-"  file(COPY \"${DSOS_COMPILE_COMMANDS_SOURCE}\" DESTINATION \"${CMAKE_SOURCE_DIR}\")\n"
+set(REKINDLED_COMPILE_COMMANDS_SYNC_SCRIPT "${CMAKE_BINARY_DIR}/rekindled_sync_compile_commands.cmake")
+file(WRITE "${REKINDLED_COMPILE_COMMANDS_SYNC_SCRIPT}"
+"if(EXISTS \"${REKINDLED_COMPILE_COMMANDS_SOURCE}\")\n"
+"  file(COPY \"${REKINDLED_COMPILE_COMMANDS_SOURCE}\" DESTINATION \"${CMAKE_SOURCE_DIR}\")\n"
 "endif()\n"
 )
 
-option(DSOS_SYNC_COMPILE_COMMANDS "Enable explicit target to sync compile_commands.json into the source tree" OFF)
+option(REKINDLED_SYNC_COMPILE_COMMANDS "Enable explicit target to sync compile_commands.json into the source tree" OFF)
 
-if(DSOS_SYNC_COMPILE_COMMANDS)
-    add_custom_target(dsos_sync_compile_commands
-        COMMAND ${CMAKE_COMMAND} -P "${DSOS_COMPILE_COMMANDS_SYNC_SCRIPT}"
+if(REKINDLED_SYNC_COMPILE_COMMANDS)
+    add_custom_target(rekindled_sync_compile_commands
+        COMMAND ${CMAKE_COMMAND} -P "${REKINDLED_COMPILE_COMMANDS_SYNC_SCRIPT}"
         COMMENT "Sync compile_commands.json into workspace root for VS Code"
     )
 else()
-    add_custom_target(dsos_sync_compile_commands
-        COMMAND ${CMAKE_COMMAND} -P "${DSOS_COMPILE_COMMANDS_SYNC_SCRIPT}"
-        COMMENT "Sync compile_commands.json into workspace root for VS Code (run explicitly with -DDSOS_SYNC_COMPILE_COMMANDS=ON or 'cmake --build . --target dsos_sync_compile_commands')"
+    add_custom_target(rekindled_sync_compile_commands
+        COMMAND ${CMAKE_COMMAND} -P "${REKINDLED_COMPILE_COMMANDS_SYNC_SCRIPT}"
+        COMMENT "Sync compile_commands.json into workspace root for VS Code (run explicitly with -DREKINDLED_SYNC_COMPILE_COMMANDS=ON or 'cmake --build . --target rekindled_sync_compile_commands')"
         VERBATIM
     )
-    set_target_properties(dsos_sync_compile_commands PROPERTIES EXCLUDE_FROM_ALL TRUE)
+    set_target_properties(rekindled_sync_compile_commands PROPERTIES EXCLUDE_FROM_ALL TRUE)
 endif()
 
 add_subdirectory(Source)

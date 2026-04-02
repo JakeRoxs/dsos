@@ -9,7 +9,7 @@ void RunInjectorInitTests()
 {
     // Create a temporary directory to store a config file.
     auto tmpRoot = std::filesystem::temp_directory_path();
-    auto testDir = tmpRoot / ("ds3os_injector_test_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    auto testDir = tmpRoot / ("rekindled_injector_test_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(testDir);
 
     RuntimeConfig config;

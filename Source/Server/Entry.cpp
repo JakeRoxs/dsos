@@ -1,7 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
- *
+ * Copyright (C) 2026 Jake Morgeson
  * This program is free software; licensed under the MIT license. 
  * You should have received a copy of the license along with this program. 
  * If not, see <https://opensource.org/licenses/MIT>.
@@ -37,7 +37,7 @@ void DebugTest()
 {
     DecodedProtobufRegistry registry;
 
-    for (const auto& entry : std::filesystem::directory_iterator("Z:/ds3os/Temp/ProtobufDump"))
+    for (const auto& entry : std::filesystem::directory_iterator("Z:/rekindled-server/Temp/ProtobufDump"))
     {
         if (entry.is_regular_file())
         {
@@ -92,7 +92,7 @@ int main(int argc, char* argv[])
     Log(R"--(\____/ .___/\___/_/ /_/   /____/\___/_/    |___/\___/_/       )--");
     Log(R"--(    /_/                                                       )--");
     Log("");
-    Log("https://github.com/jakeroxs/dsos");
+    Log("https://github.com/jakeroxs/rekindled-server");
     Log("");
 
 #ifdef DEBUG_TEST

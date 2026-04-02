@@ -26,9 +26,9 @@ updates:
         patterns:
           - "*"
 
-  # Enable version updates for the MasterServer JavaScript dependencies
+  # Enable version updates for the hub JavaScript dependencies
   - package-ecosystem: "npm"
-    directory: "/Source/MasterServer"
+    directory: "/Source/hub"
     schedule:
       interval: "weekly"
     groups:

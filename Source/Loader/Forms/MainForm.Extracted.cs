@@ -174,7 +174,7 @@ namespace Loader
 
     protected virtual Task<string> GetPublicKeyAsync(string id, string password, CancellationToken cancellationToken)
     {
-      return Task.Run(() => MasterServerApi.GetPublicKey(id, password), cancellationToken);
+      return Task.Run(() => HubApi.GetPublicKey(id, password), cancellationToken);
     }
 
     internal async Task UpdateServerIpAsync(ServerConfig updateConfig, CancellationToken cancellationToken)
@@ -201,10 +201,10 @@ namespace Loader
       }
     }
 
-    protected virtual Task<List<ServerConfig>> QueryServersFromMasterAsync(CancellationToken cancellationToken)
+    protected virtual Task<List<ServerConfig>> QueryServersFromHubAsync(CancellationToken cancellationToken)
     {
-      // MasterServerApi.ListServers can return null on failure.
-      return Task.Run(() => MasterServerApi.ListServers(), cancellationToken);
+      // HubApi.ListServers can return null on failure.
+      return Task.Run(() => HubApi.ListServers(), cancellationToken);
     }
 
     internal async Task QueryServersAsync(CancellationToken cancellationToken)
@@ -323,7 +323,7 @@ namespace Loader
     {
       Process.Start(new ProcessStartInfo
       {
-        FileName = "https://github.com/jakeroxs/ds3os",
+        FileName = "https://github.com/jakeroxs/rekindled-server",
         UseShellExecute = true
       });
     }

@@ -37,13 +37,13 @@ namespace Loader {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("https://dsos.jakesws.xyz")]
-        public string master_server_url {
+        [global::System.Configuration.DefaultSettingValueAttribute("https://rekindled.jakesws.xyz")]
+        public string hub_server_url {
             get {
-                return ((string)(this["master_server_url"]));
+                return ((string)(this["hub_server_url"]));
             }
             set {
-                this["master_server_url"] = value;
+                this["hub_server_url"] = value;
             }
         }
         

@@ -1,5 +1,5 @@
 # ================================================================================================
-#  DS3OS
+#  Rekindled Server
 #  Copyright (C) 2022 Tim Leonard
 # ================================================================================================
 
@@ -10,41 +10,41 @@ add_subdirectory(steam)
 add_subdirectory(zlib)
 
 # Deprecated vendor-style options remain for compatibility, but are no-op.
-set(DSOS_CIVETWEB_SOURCE_DIR "" CACHE PATH "Path to a local civetweb source tree to use instead of downloading it")
-set(DSOS_CIVETWEB_ARCHIVE "" CACHE STRING "URL to a CivetWeb source archive to fetch when local source is unavailable (empty means use git main branch)")
-set(DSOS_CIVETWEB_ARCHIVE_HASH "" CACHE STRING "Expected SHA256 of the CivetWeb archive (optional but strongly recommended when DSOS_CIVETWEB_ARCHIVE is set; leave empty to skip hash verification)")
-option(DSOS_CIVETWEB_ALLOW_REMOTE_FETCH "Allow automatically fetching CivetWeb via network when local source is unavailable" ON)
-set(DSOS_CIVETWEB_GIT_REPOSITORY "https://github.com/civetweb/civetweb.git" CACHE STRING "CivetWeb git repository to fetch if archive-based fetch is disabled")
-set(DSOS_CIVETWEB_GIT_TAG "master" CACHE STRING "CivetWeb branch/tag to checkout from the repository (use master for latest upstream fixes)")
+set(REKINDLED_CIVETWEB_SOURCE_DIR "" CACHE PATH "Path to a local civetweb source tree to use instead of downloading it")
+set(REKINDLED_CIVETWEB_ARCHIVE "" CACHE STRING "URL to a CivetWeb source archive to fetch when local source is unavailable (empty means use git main branch)")
+set(REKINDLED_CIVETWEB_ARCHIVE_HASH "" CACHE STRING "Expected SHA256 of the CivetWeb archive (optional but strongly recommended when REKINDLED_CIVETWEB_ARCHIVE is set; leave empty to skip hash verification)")
+option(REKINDLED_CIVETWEB_ALLOW_REMOTE_FETCH "Allow automatically fetching CivetWeb via network when local source is unavailable" ON)
+set(REKINDLED_CIVETWEB_GIT_REPOSITORY "https://github.com/civetweb/civetweb.git" CACHE STRING "CivetWeb git repository to fetch if archive-based fetch is disabled")
+set(REKINDLED_CIVETWEB_GIT_TAG "master" CACHE STRING "CivetWeb branch/tag to checkout from the repository (use master for latest upstream fixes)")
 
-set(DSOS_SQLITE_SOURCE_DIR "" CACHE PATH "Path to a local sqlite source tree to use instead of downloading it")
+set(REKINDLED_SQLITE_SOURCE_DIR "" CACHE PATH "Path to a local sqlite source tree to use instead of downloading it")
 # Prefers SQLite amalgamation package, which contains sqlite3.c/sqlite3.h/sqlite3ext.h in a stable layout for fallback builds.
-set(DSOS_SQLITE_ARCHIVE "https://sqlite.org/2026/sqlite-amalgamation-3510300.zip" CACHE STRING "URL to a SQLite source archive for FetchContent resolution when system sqlite is unavailable")
-set(DSOS_SQLITE_ARCHIVE_HASH "" CACHE STRING "Optional SHA256 hash (e.g., SHA256=<hash>) for DSOS_SQLITE_ARCHIVE to enable archive integrity validation and avoid redundant re-downloads")
-option(DSOS_SQLITE_ALLOW_REMOTE_FETCH "Allow automatically fetching SQLite via network when system sqlite is not available" ON)
+set(REKINDLED_SQLITE_ARCHIVE "https://sqlite.org/2026/sqlite-amalgamation-3510300.zip" CACHE STRING "URL to a SQLite source archive for FetchContent resolution when system sqlite is unavailable")
+set(REKINDLED_SQLITE_ARCHIVE_HASH "" CACHE STRING "Optional SHA256 hash (e.g., SHA256=<hash>) for REKINDLED_SQLITE_ARCHIVE to enable archive integrity validation and avoid redundant re-downloads")
+option(REKINDLED_SQLITE_ALLOW_REMOTE_FETCH "Allow automatically fetching SQLite via network when system sqlite is not available" ON)
 
-set(DSOS_OPENSSL_SOURCE_DIR "" CACHE PATH "Path to a local openssl source tree to use instead of downloading it")
-option(DSOS_OPENSSL_BOOTSTRAP_PERL "Automatically download portable Perl on Windows if perl is not found in PATH (needed for fetched OpenSSL source builds)" ON)
-set(DSOS_OPENSSL_PERL_ARCHIVE_URL "https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54201_64bit/strawberry-perl-5.42.0.1-64bit-portable.zip" CACHE STRING "Portable Perl archive URL used when bootstrapping Perl for OpenSSL")
-set(DSOS_OPENSSL_PERL_ARCHIVE_HASH "SHA256=a1cde185656cf307b51670eed69f648b9eff15b5c518cb136e027c628e650b71" CACHE STRING "Expected SHA256 for DSOS_OPENSSL_PERL_ARCHIVE_URL")
+set(REKINDLED_OPENSSL_SOURCE_DIR "" CACHE PATH "Path to a local openssl source tree to use instead of downloading it")
+option(REKINDLED_OPENSSL_BOOTSTRAP_PERL "Automatically download portable Perl on Windows if perl is not found in PATH (needed for fetched OpenSSL source builds)" ON)
+set(REKINDLED_OPENSSL_PERL_ARCHIVE_URL "https://github.com/StrawberryPerl/Perl-Dist-Strawberry/releases/download/SP_54201_64bit/strawberry-perl-5.42.0.1-64bit-portable.zip" CACHE STRING "Portable Perl archive URL used when bootstrapping Perl for OpenSSL")
+set(REKINDLED_OPENSSL_PERL_ARCHIVE_HASH "SHA256=a1cde185656cf307b51670eed69f648b9eff15b5c518cb136e027c628e650b71" CACHE STRING "Expected SHA256 for REKINDLED_OPENSSL_PERL_ARCHIVE_URL")
 
-set(DSOS_CURL_SOURCE_DIR "" CACHE PATH "Path to a local curl source tree to use instead of downloading it")
+set(REKINDLED_CURL_SOURCE_DIR "" CACHE PATH "Path to a local curl source tree to use instead of downloading it")
 
 include(FetchContent)
 include(ExternalProject)
 
-set(DSOS_DEP_FETCH_STATUS_FILE "${CMAKE_BINARY_DIR}/dependency-fetch-status.txt" CACHE FILEPATH "Path to a file recording which deps were fetched vs vendored")
+set(REKINDLED_DEP_FETCH_STATUS_FILE "${CMAKE_BINARY_DIR}/dependency-fetch-status.txt" CACHE FILEPATH "Path to a file recording which deps were fetched vs vendored")
 # Clear/initialize status file on each configure pass
-file(WRITE "${DSOS_DEP_FETCH_STATUS_FILE}" "")
-function(dsos_append_dep_status)
+file(WRITE "${REKINDLED_DEP_FETCH_STATUS_FILE}" "")
+function(rekindled_append_dep_status)
     # (name, status)
     if(NOT ARGN)
         return()
     endif()
-    file(APPEND "${DSOS_DEP_FETCH_STATUS_FILE}" "${ARGN}\n")
+    file(APPEND "${REKINDLED_DEP_FETCH_STATUS_FILE}" "${ARGN}\n")
 endfunction()
 
-function(dsos_fetch_archive_if_missing)
+function(rekindled_fetch_archive_if_missing)
     # args: NAME URL ARCHIVE [HASH]
     set(_name "${ARGV0}")
     set(_url "${ARGV1}")
@@ -92,7 +92,7 @@ function(dsos_fetch_archive_if_missing)
     set(${_name}_FETCH_STATUS "${_status}" PARENT_SCOPE)
 endfunction()
 
-function(dsos_set_fetchcontent_source_dir_if_cached)
+function(rekindled_set_fetchcontent_source_dir_if_cached)
     # args: NAME SOURCE_DIR
     set(_name "${ARGV0}")
     set(_source_dir "${ARGV1}")
@@ -103,37 +103,37 @@ function(dsos_set_fetchcontent_source_dir_if_cached)
 endfunction()
 
 # CivetWeb
-if(DSOS_CIVETWEB_SOURCE_DIR)
-    dsos_append_dep_status("civetweb: local source")
-    add_subdirectory(${DSOS_CIVETWEB_SOURCE_DIR})
+if(REKINDLED_CIVETWEB_SOURCE_DIR)
+    rekindled_append_dep_status("civetweb: local source")
+    add_subdirectory(${REKINDLED_CIVETWEB_SOURCE_DIR})
 else()
     # CivetWeb upstream sets -pedantic-errors by default in many paths and can
     # fail on compilers that do not support OS-specific language extension tokens.
     set(CIVETWEB_ALLOW_WARNINGS ON CACHE BOOL "Do not treat warnings as errors in CivetWeb" FORCE)
     # Disable ASAN for civetweb on Windows to avoid clang sanitizer Win32 dependency issues during link.
-    set(CIVETWEB_ENABLE_ASAN OFF CACHE BOOL "Disable ASAN for civetweb in dsos" FORCE)
+        set(CIVETWEB_ENABLE_ASAN OFF CACHE BOOL "Disable ASAN for civetweb in rekindled" FORCE)
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fms-extensions")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fms-extensions")
     endif()
     # Prefer a CivetWeb archive if configured, for consistent non-vendored dependency flow.
-    if(DEFINED DSOS_CIVETWEB_ARCHIVE AND DSOS_CIVETWEB_ARCHIVE)
+    if(DEFINED REKINDLED_CIVETWEB_ARCHIVE AND REKINDLED_CIVETWEB_ARCHIVE)
         set(_civetweb_use_archive TRUE)
-        set(_civetweb_url "${DSOS_CIVETWEB_ARCHIVE}")
-        set(_civetweb_hash "${DSOS_CIVETWEB_ARCHIVE_HASH}")
+        set(_civetweb_url "${REKINDLED_CIVETWEB_ARCHIVE}")
+        set(_civetweb_hash "${REKINDLED_CIVETWEB_ARCHIVE_HASH}")
     else()
         set(_civetweb_use_archive FALSE)
     endif()
 
-    message(STATUS "CivetWeb: archive-enabled=${_civetweb_use_archive} archive-url=${DSOS_CIVETWEB_ARCHIVE} allow-remote=${DSOS_CIVETWEB_ALLOW_REMOTE_FETCH}")
+    message(STATUS "CivetWeb: archive-enabled=${_civetweb_use_archive} archive-url=${REKINDLED_CIVETWEB_ARCHIVE} allow-remote=${REKINDLED_CIVETWEB_ALLOW_REMOTE_FETCH}")
 
     set(_civetweb_src_dir "${CMAKE_BINARY_DIR}/_deps/civetweb-src")
-    dsos_set_fetchcontent_source_dir_if_cached("civetweb" "${_civetweb_src_dir}")
+    rekindled_set_fetchcontent_source_dir_if_cached("civetweb" "${_civetweb_src_dir}")
 
     if(_civetweb_use_archive)
         set(_civetweb_archive "${CMAKE_BINARY_DIR}/_deps/civetweb-archive.tar.gz")
-        dsos_fetch_archive_if_missing("civetweb" "${_civetweb_url}" "${_civetweb_archive}" "${_civetweb_hash}")
-        dsos_append_dep_status("civetweb: ${civetweb_FETCH_STATUS}_archive")
+        rekindled_fetch_archive_if_missing("civetweb" "${_civetweb_url}" "${_civetweb_archive}" "${_civetweb_hash}")
+        rekindled_append_dep_status("civetweb: ${civetweb_FETCH_STATUS}_archive")
 
         if(_civetweb_hash)
             FetchContent_Declare(
@@ -150,17 +150,17 @@ else()
             )
         endif()
     else()
-        if(NOT DSOS_CIVETWEB_ALLOW_REMOTE_FETCH)
-            message(FATAL_ERROR "No CivetWeb archive provided and remote fetch is disabled (DSOS_CIVETWEB_ALLOW_REMOTE_FETCH=OFF). Provide DSOS_CIVETWEB_ARCHIVE or DSOS_CIVETWEB_SOURCE_DIR.")
+        if(NOT REKINDLED_CIVETWEB_ALLOW_REMOTE_FETCH)
+            message(FATAL_ERROR "No CivetWeb archive provided and remote fetch is disabled (REKINDLED_CIVETWEB_ALLOW_REMOTE_FETCH=OFF). Provide REKINDLED_CIVETWEB_ARCHIVE or REKINDLED_CIVETWEB_SOURCE_DIR.")
         endif()
 
-        message(STATUS "Fetching CivetWeb from ${DSOS_CIVETWEB_GIT_REPOSITORY}@${DSOS_CIVETWEB_GIT_TAG}")
-        dsos_append_dep_status("civetweb: fetched git")
+        message(STATUS "Fetching CivetWeb from ${REKINDLED_CIVETWEB_GIT_REPOSITORY}@${REKINDLED_CIVETWEB_GIT_TAG}")
+        rekindled_append_dep_status("civetweb: fetched git")
 
         FetchContent_Declare(
             civetweb
-            GIT_REPOSITORY "${DSOS_CIVETWEB_GIT_REPOSITORY}"
-            GIT_TAG "${DSOS_CIVETWEB_GIT_TAG}"
+            GIT_REPOSITORY "${REKINDLED_CIVETWEB_GIT_REPOSITORY}"
+            GIT_TAG "${REKINDLED_CIVETWEB_GIT_TAG}"
             GIT_SHALLOW TRUE
             GIT_PROGRESS TRUE
             SOURCE_DIR "${_civetweb_src_dir}"
@@ -233,19 +233,19 @@ endif()
 
 # SQLite
 # Fallback path: local source -> system package -> archive fetch.
-set(DSOS_SQLITE_SOURCE_DIR_USED FALSE)
-if(DSOS_SQLITE_SOURCE_DIR)
-    if(EXISTS "${DSOS_SQLITE_SOURCE_DIR}/CMakeLists.txt")
-        message(STATUS "Building sqlite from local source: ${DSOS_SQLITE_SOURCE_DIR}")
-        dsos_append_dep_status("sqlite: local source")
-        add_subdirectory(${DSOS_SQLITE_SOURCE_DIR})
-        set(DSOS_SQLITE_SOURCE_DIR_USED TRUE)
+set(REKINDLED_SQLITE_SOURCE_DIR_USED FALSE)
+if(REKINDLED_SQLITE_SOURCE_DIR)
+    if(EXISTS "${REKINDLED_SQLITE_SOURCE_DIR}/CMakeLists.txt")
+        message(STATUS "Building sqlite from local source: ${REKINDLED_SQLITE_SOURCE_DIR}")
+        rekindled_append_dep_status("sqlite: local source")
+        add_subdirectory(${REKINDLED_SQLITE_SOURCE_DIR})
+        set(REKINDLED_SQLITE_SOURCE_DIR_USED TRUE)
     else()
-        message(WARNING "DSOS_SQLITE_SOURCE_DIR=${DSOS_SQLITE_SOURCE_DIR} does not appear to be a CMake-enabled sqlite tree; continuing system detection")
+        message(WARNING "REKINDLED_SQLITE_SOURCE_DIR=${REKINDLED_SQLITE_SOURCE_DIR} does not appear to be a CMake-enabled sqlite tree; continuing system detection")
     endif()
 endif()
 
-if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
+if(NOT REKINDLED_SQLITE_SOURCE_DIR_USED)
     # Prefer the system sqlite package when available. On some platforms the
     # FindSQLite3 module only sets variables (no imported targets), and on others
     # the imported target may exist even if SQLite3_FOUND is unset.
@@ -268,22 +268,22 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
 
     # Some FindSQLite3 implementations claim success but do not define a target.
     # Try to recover by emitting a usable target via pkg-config.
-    set(DSOS_SQLITE_HAS_TARGET FALSE)
+    set(REKINDLED_SQLITE_HAS_TARGET FALSE)
     if(TARGET SQLite::SQLite3 OR TARGET SQLite3::SQLite3)
-        set(DSOS_SQLITE_HAS_TARGET TRUE)
+        set(REKINDLED_SQLITE_HAS_TARGET TRUE)
     endif()
 
-    set(DSOS_SQLITE_HAS_LIBS FALSE)
+    set(REKINDLED_SQLITE_HAS_LIBS FALSE)
     if(DEFINED SQLite3_LIBRARIES AND SQLite3_LIBRARIES)
-        set(DSOS_SQLITE_HAS_LIBS TRUE)
+        set(REKINDLED_SQLITE_HAS_LIBS TRUE)
     endif()
 
-    set(DSOS_SQLITE_AVAILABLE FALSE)
-    if(SQLite3_FOUND OR DSOS_SQLITE_HAS_TARGET OR DSOS_SQLITE_HAS_LIBS)
-        set(DSOS_SQLITE_AVAILABLE TRUE)
+    set(REKINDLED_SQLITE_AVAILABLE FALSE)
+    if(SQLite3_FOUND OR REKINDLED_SQLITE_HAS_TARGET OR REKINDLED_SQLITE_HAS_LIBS)
+        set(REKINDLED_SQLITE_AVAILABLE TRUE)
     endif()
 
-    if(NOT DSOS_SQLITE_AVAILABLE)
+    if(NOT REKINDLED_SQLITE_AVAILABLE)
         find_package(PkgConfig QUIET)
         if(PKG_CONFIG_FOUND)
             pkg_check_modules(_sqlite3_pc sqlite3)
@@ -292,13 +292,13 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
                 set(SQLite3_FOUND TRUE)
                 set(SQLite3_LIBRARIES "${_sqlite3_pc_LIBRARIES}")
                 set(SQLite3_INCLUDE_DIRS "${_sqlite3_pc_INCLUDE_DIRS}")
-                set(DSOS_SQLITE_HAS_LIBS TRUE)
-                set(DSOS_SQLITE_AVAILABLE TRUE)
+                set(REKINDLED_SQLITE_HAS_LIBS TRUE)
+                set(REKINDLED_SQLITE_AVAILABLE TRUE)
             endif()
         endif()
     endif()
 
-    if(DSOS_SQLITE_AVAILABLE)
+    if(REKINDLED_SQLITE_AVAILABLE)
         message(STATUS "Using system sqlite: SQLite3_FOUND=${SQLite3_FOUND} SQLite3_LIBRARIES='${SQLite3_LIBRARIES}' SQLite3_INCLUDE_DIRS='${SQLite3_INCLUDE_DIRS}'")
 
         # Ensure we have a usable library variable when FindSQLite3 reports success.
@@ -306,7 +306,7 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
             message(WARNING "SQLite3_FOUND=TRUE but no SQLite3_LIBRARIES set; attempting to use SQLite3_LIBRARY")
             if(DEFINED SQLite3_LIBRARY AND SQLite3_LIBRARY)
                 set(SQLite3_LIBRARIES "${SQLite3_LIBRARY}")
-                set(DSOS_SQLITE_HAS_LIBS TRUE)
+                set(REKINDLED_SQLITE_HAS_LIBS TRUE)
             endif()
         endif()
 
@@ -318,7 +318,7 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
                 add_library(sqlite ALIAS SQLite::SQLite3)
             elseif(TARGET SQLite3::SQLite3)
                 add_library(sqlite ALIAS SQLite3::SQLite3)
-            elseif(DSOS_SQLITE_HAS_LIBS)
+            elseif(REKINDLED_SQLITE_HAS_LIBS)
                 add_library(sqlite INTERFACE)
                 target_link_libraries(sqlite INTERFACE ${SQLite3_LIBRARIES})
                 if(DEFINED SQLite3_INCLUDE_DIRS AND SQLite3_INCLUDE_DIRS)
@@ -334,14 +334,14 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
     endif()
 
     if(NOT TARGET sqlite)
-        if(NOT DSOS_SQLITE_ALLOW_REMOTE_FETCH)
+        if(NOT REKINDLED_SQLITE_ALLOW_REMOTE_FETCH)
             message(FATAL_ERROR "Could not locate system SQLite3 and automatic remote fetch is disabled.\n" 
                                 "Install SQLite3 development package (e.g. vcpkg sqlite3 on Windows or libsqlite3-dev on Linux).\n")
         endif()
 
         # Attempt to fetch SQLite from GitHub (latest backports) as a non-vendored fallback.
         # This path supports todo 037: externalized dependency usage from upstream repo.
-        set(_sqlite_fetch_url "${DSOS_SQLITE_ARCHIVE}")
+        set(_sqlite_fetch_url "${REKINDLED_SQLITE_ARCHIVE}")
         if(NOT _sqlite_fetch_url)
             set(_sqlite_fetch_url "https://sqlite.org/2026/sqlite-autoconf-3510300.tar.gz")
         endif()
@@ -351,9 +351,9 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
 
         set(_sqlite_use_cached_archive FALSE)
         if(EXISTS "${_sqlite_archive}")
-            if(DSOS_SQLITE_ARCHIVE_HASH)
+            if(REKINDLED_SQLITE_ARCHIVE_HASH)
                 file(SHA256 "${_sqlite_archive}" _sqlite_current_hash)
-                set(_sqlite_expected_hash "${DSOS_SQLITE_ARCHIVE_HASH}")
+                set(_sqlite_expected_hash "${REKINDLED_SQLITE_ARCHIVE_HASH}")
                 string(REPLACE "SHA256=" "" _sqlite_expected_hash_norm "${_sqlite_expected_hash}")
                 if(_sqlite_current_hash STREQUAL _sqlite_expected_hash_norm)
                     set(_sqlite_use_cached_archive TRUE)
@@ -369,8 +369,8 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
         endif()
 
         if(NOT _sqlite_use_cached_archive)
-            if(DSOS_SQLITE_ARCHIVE_HASH)
-                file(DOWNLOAD "${_sqlite_fetch_url}" "${_sqlite_archive}" EXPECTED_HASH "${DSOS_SQLITE_ARCHIVE_HASH}" STATUS _dl_status SHOW_PROGRESS)
+            if(REKINDLED_SQLITE_ARCHIVE_HASH)
+                file(DOWNLOAD "${_sqlite_fetch_url}" "${_sqlite_archive}" EXPECTED_HASH "${REKINDLED_SQLITE_ARCHIVE_HASH}" STATUS _dl_status SHOW_PROGRESS)
             else()
                 file(DOWNLOAD "${_sqlite_fetch_url}" "${_sqlite_archive}" STATUS _dl_status SHOW_PROGRESS)
             endif()
@@ -378,12 +378,12 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
 
             if(_dl_res EQUAL 0 AND EXISTS "${_sqlite_archive}")
                 message(STATUS "Fetched SQLite archive to ${_sqlite_archive}")
-                dsos_append_dep_status("sqlite: fetched")
+                rekindled_append_dep_status("sqlite: fetched")
             else()
                 message(FATAL_ERROR "Could not locate a usable SQLite target. Install a system sqlite3 development package (e.g. libsqlite3-dev on Linux, vcpkg sqlite3 on Windows) so FindSQLite3 succeeds. Fetch attempt from ${_sqlite_fetch_url} returned ${_dl_res}.")
             endif()
         else()
-            dsos_append_dep_status("sqlite: cached")
+            rekindled_append_dep_status("sqlite: cached")
         endif()
 
             # Use the cached archive directly, without forcing FetchContent to re-download
@@ -465,12 +465,12 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
                 add_library(sqlite STATIC "${_sqlite3_source}")
                 target_include_directories(sqlite PUBLIC "${_sqlite_include_dir}")
                 add_library(SQLite::SQLite3 ALIAS sqlite)
-                set(DSOS_SQLITE_AVAILABLE TRUE)
+                set(REKINDLED_SQLITE_AVAILABLE TRUE)
             else()
                 message(WARNING "Fetched SQLite archive does not include sqlite3.c (unexpected).")
             endif()
         endif()
-    endif()  # end if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
+    endif()  # end if(NOT REKINDLED_SQLITE_SOURCE_DIR_USED)
 
     # Ensure a usable sqlite target exists so downstream projects can link.
     # This is a safety net for environments where the vendored sqlite subdirectory
@@ -488,29 +488,29 @@ if(NOT DSOS_SQLITE_SOURCE_DIR_USED)
 
 # OpenSSL
 # Prefer manual local source over system; see docs/BUILD if this is not desirable.
-if(DEFINED DSOS_OPENSSL_SOURCE_DIR AND DSOS_OPENSSL_SOURCE_DIR AND EXISTS "${DSOS_OPENSSL_SOURCE_DIR}/include/openssl/opensslv.h")
-    dsos_append_dep_status("openssl: local source")
-    message(STATUS "Building OpenSSL from DSOS_OPENSSL_SOURCE_DIR=${DSOS_OPENSSL_SOURCE_DIR}")
+if(DEFINED REKINDLED_OPENSSL_SOURCE_DIR AND REKINDLED_OPENSSL_SOURCE_DIR AND EXISTS "${REKINDLED_OPENSSL_SOURCE_DIR}/include/openssl/opensslv.h")
+    rekindled_append_dep_status("openssl: local source")
+    message(STATUS "Building OpenSSL from REKINDLED_OPENSSL_SOURCE_DIR=${REKINDLED_OPENSSL_SOURCE_DIR}")
     set(_openssl_source_build_dir "${CMAKE_BINARY_DIR}/_deps/openssl-local-build")
     file(MAKE_DIRECTORY "${_openssl_source_build_dir}")
-    add_subdirectory("${DSOS_OPENSSL_SOURCE_DIR}" "${_openssl_source_build_dir}")
+    add_subdirectory("${REKINDLED_OPENSSL_SOURCE_DIR}" "${_openssl_source_build_dir}")
     add_library(openssl INTERFACE)
     if(TARGET OpenSSL::Crypto AND TARGET OpenSSL::SSL)
         target_link_libraries(openssl INTERFACE OpenSSL::Crypto OpenSSL::SSL)
     else()
         target_link_libraries(openssl INTERFACE ssl crypto)
     endif()
-    target_include_directories(openssl INTERFACE "${DSOS_OPENSSL_SOURCE_DIR}/include")
+    target_include_directories(openssl INTERFACE "${REKINDLED_OPENSSL_SOURCE_DIR}/include")
 else()
     find_package(OpenSSL QUIET)
     if(OpenSSL_FOUND)
-        dsos_append_dep_status("openssl: system")
+        rekindled_append_dep_status("openssl: system")
         add_library(openssl INTERFACE)
         target_link_libraries(openssl INTERFACE OpenSSL::Crypto OpenSSL::SSL)
         target_include_directories(openssl INTERFACE ${OPENSSL_INCLUDE_DIR})
     else()
-        if(DEFINED DSOS_OPENSSL_ARCHIVE AND DSOS_OPENSSL_ARCHIVE)
-            set(_openssl_url "${DSOS_OPENSSL_ARCHIVE}")
+        if(DEFINED REKINDLED_OPENSSL_ARCHIVE AND REKINDLED_OPENSSL_ARCHIVE)
+            set(_openssl_url "${REKINDLED_OPENSSL_ARCHIVE}")
             set(_openssl_hash "SHA256=c6537bb633e73928eea0312cb9e11de9378f2a53cf72478914840925080c2501")
         else()
             set(_openssl_url "https://github.com/kzalewski/openssl-1.1.1/archive/refs/tags/1.1.1ze.tar.gz")
@@ -519,11 +519,11 @@ else()
         set(_openssl_archive "${CMAKE_BINARY_DIR}/_deps/openssl-1.1.1ze.tar.gz")
         file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_deps")
 
-        dsos_fetch_archive_if_missing("openssl" "${_openssl_url}" "${_openssl_archive}" "${_openssl_hash}")
-        dsos_append_dep_status("openssl: ${openssl_FETCH_STATUS}")
+        rekindled_fetch_archive_if_missing("openssl" "${_openssl_url}" "${_openssl_archive}" "${_openssl_hash}")
+        rekindled_append_dep_status("openssl: ${openssl_FETCH_STATUS}")
 
         set(_openssl_src_dir "${CMAKE_BINARY_DIR}/_deps/openssl-src")
-        dsos_set_fetchcontent_source_dir_if_cached("openssl_cmake" "${_openssl_src_dir}")
+        rekindled_set_fetchcontent_source_dir_if_cached("openssl_cmake" "${_openssl_src_dir}")
 
         FetchContent_Declare(
             openssl_cmake
@@ -559,17 +559,17 @@ else()
                 add_library(openssl INTERFACE)
                 target_include_directories(openssl INTERFACE "${_openssl_install_dir}/include")
                 target_link_libraries(openssl INTERFACE openssl_crypto openssl_ssl)
-                dsos_append_dep_status("openssl: cached-source-build")
+                rekindled_append_dep_status("openssl: cached-source-build")
             else()
                 message(STATUS "OpenSSL fetching: verifying required tooling")
                 find_program(_openssl_perl_executable perl)
                 if(_openssl_perl_executable)
                     message(STATUS "Found perl executable: ${_openssl_perl_executable}")
                 else()
-                    if(WIN32 AND DSOS_OPENSSL_BOOTSTRAP_PERL)
-                        message(STATUS "Perl missing, but DSOS_OPENSSL_BOOTSTRAP_PERL is enabled; falling back to bootstrap path check.")
+                    if(WIN32 AND REKINDLED_OPENSSL_BOOTSTRAP_PERL)
+                        message(STATUS "Perl missing, but REKINDLED_OPENSSL_BOOTSTRAP_PERL is enabled; falling back to bootstrap path check.")
                     else()
-                        message(FATAL_ERROR "Perl is required for OpenSSL fetched source build. Install Strawberry Perl, set DSOS_OPENSSL_SOURCE_DIR to a local OpenSSL tree, or set DSOS_OPENSSL_BOOTSTRAP_PERL=ON on Windows.")
+                        message(FATAL_ERROR "Perl is required for OpenSSL fetched source build. Install Strawberry Perl, set REKINDLED_OPENSSL_SOURCE_DIR to a local OpenSSL tree, or set REKINDLED_OPENSSL_BOOTSTRAP_PERL=ON on Windows.")
                     endif()
                 endif()
 
@@ -595,7 +595,7 @@ else()
             endif()
 
             if(NOT _openssl_perl_executable)
-                if(WIN32 AND DSOS_OPENSSL_BOOTSTRAP_PERL)
+                if(WIN32 AND REKINDLED_OPENSSL_BOOTSTRAP_PERL)
                     set(_perl_archive "${CMAKE_BINARY_DIR}/_deps/strawberry-perl-portable.zip")
                     set(_perl_extract_dir "${CMAKE_BINARY_DIR}/_deps/perl-portable")
                     file(MAKE_DIRECTORY "${_perl_extract_dir}")
@@ -611,11 +611,11 @@ else()
                         if(EXISTS "${_perl_archive}")
                             message(STATUS "Using cached Perl archive ${_perl_archive}")
                         else()
-                            message(STATUS "Perl not found; attempting portable bootstrap from ${DSOS_OPENSSL_PERL_ARCHIVE_URL}")
-                            file(DOWNLOAD "${DSOS_OPENSSL_PERL_ARCHIVE_URL}" "${_perl_archive}" EXPECTED_HASH "${DSOS_OPENSSL_PERL_ARCHIVE_HASH}" STATUS _perl_dl_status SHOW_PROGRESS)
+                            message(STATUS "Perl not found; attempting portable bootstrap from ${REKINDLED_OPENSSL_PERL_ARCHIVE_URL}")
+                            file(DOWNLOAD "${REKINDLED_OPENSSL_PERL_ARCHIVE_URL}" "${_perl_archive}" EXPECTED_HASH "${REKINDLED_OPENSSL_PERL_ARCHIVE_HASH}" STATUS _perl_dl_status SHOW_PROGRESS)
                             list(GET _perl_dl_status 0 _perl_dl_res)
                             if(NOT _perl_dl_res EQUAL 0)
-                                message(FATAL_ERROR "Failed to download portable Perl archive from ${DSOS_OPENSSL_PERL_ARCHIVE_URL}. Set DSOS_OPENSSL_BOOTSTRAP_PERL=OFF and install Perl manually, or provide a valid DSOS_OPENSSL_PERL_ARCHIVE_URL/DSOS_OPENSSL_PERL_ARCHIVE_HASH.")
+                                message(FATAL_ERROR "Failed to download portable Perl archive from ${REKINDLED_OPENSSL_PERL_ARCHIVE_URL}. Set REKINDLED_OPENSSL_BOOTSTRAP_PERL=OFF and install Perl manually, or provide a valid REKINDLED_OPENSSL_PERL_ARCHIVE_URL/REKINDLED_OPENSSL_PERL_ARCHIVE_HASH.")
                             endif()
                         endif()
 
@@ -677,7 +677,7 @@ else()
                         endif()
                     endif()
                 else()
-                    message(FATAL_ERROR "Perl is required to build fetched OpenSSL from source. Install Perl (e.g. Strawberry Perl), enable DSOS_OPENSSL_BOOTSTRAP_PERL on Windows, or provide DSOS_OPENSSL_SOURCE_DIR/OpenSSL system package.")
+                    message(FATAL_ERROR "Perl is required to build fetched OpenSSL from source. Install Perl (e.g. Strawberry Perl), enable REKINDLED_OPENSSL_BOOTSTRAP_PERL on Windows, or provide REKINDLED_OPENSSL_SOURCE_DIR/OpenSSL system package.")
                 endif()
             endif()
 
@@ -754,7 +754,7 @@ else()
             endif()
 
             if(_openssl_need_nmake AND NOT _openssl_nmake_executable)
-                message(FATAL_ERROR "nmake.exe not found. Install Visual Studio build tools or run in Developer Command Prompt. Alternatively, set DSOS_OPENSSL_SOURCE_DIR to a prebuilt local OpenSSL tree or use system OpenSSL via find_package(OpenSSL).")
+                message(FATAL_ERROR "nmake.exe not found. Install Visual Studio build tools or run in Developer Command Prompt. Alternatively, set REKINDLED_OPENSSL_SOURCE_DIR to a prebuilt local OpenSSL tree or use system OpenSSL via find_package(OpenSSL).")
             elseif(NOT _openssl_need_nmake AND NOT _openssl_nmake_executable)
                 message(WARNING "nmake.exe was not found, but Ninja generator was selected. Ensure the OpenSSL source build path is supported on this environment.")
             endif()
@@ -848,28 +848,28 @@ else()
             target_include_directories(openssl INTERFACE "${_openssl_install_dir}/include")
             target_link_libraries(openssl INTERFACE openssl_crypto openssl_ssl)
             add_dependencies(openssl openssl_fetched_build)
-            dsos_append_dep_status("openssl: fetched-source-build")
+            rekindled_append_dep_status("openssl: fetched-source-build")
         endif()  # if(EXISTS _openssl_ssl_lib_path && EXISTS _openssl_crypto_lib_path)
     endif()      # if(OpenSSL_FOUND)
-endif()          # if(DEFINED DSOS_OPENSSL_SOURCE_DIR && ...)
+endif()          # if(DEFINED REKINDLED_OPENSSL_SOURCE_DIR && ...)
 
 # Curl
 # When building curl via FetchContent, disable legacy/weak auth mechanisms
 set(CURL_DISABLE_NTLM ON CACHE BOOL "Disable NTLM support in curl" FORCE)
 
 # Prevent curl's own test suite from being built in CI (requires Perl and
-# produces extra executables that we don't need for dsos).
+# produces extra executables that we don't need for Rekindled).
 set(CURL_DISABLE_TESTS ON CACHE BOOL "Disable curl test suite" FORCE)
 
-if(DSOS_CURL_SOURCE_DIR)
+if(REKINDLED_CURL_SOURCE_DIR)
         FetchContent_Declare(
             curl
-            SOURCE_DIR "${DSOS_CURL_SOURCE_DIR}"
+            SOURCE_DIR "${REKINDLED_CURL_SOURCE_DIR}"
         )
         FetchContent_MakeAvailable(curl)
     else()
-        if(DEFINED DSOS_CURL_ARCHIVE AND DSOS_CURL_ARCHIVE)
-            set(_curl_url "${DSOS_CURL_ARCHIVE}")
+        if(DEFINED REKINDLED_CURL_ARCHIVE AND REKINDLED_CURL_ARCHIVE)
+            set(_curl_url "${REKINDLED_CURL_ARCHIVE}")
             set(_curl_hash "SHA256=6bd80ad4f07187015911216ee7185b90d285ac5162aed1bded144f9f93232a3c")
         else()
             set(_curl_url "https://curl.se/download/curl-8.1.0.tar.xz")
@@ -878,11 +878,11 @@ if(DSOS_CURL_SOURCE_DIR)
         set(_curl_archive "${CMAKE_BINARY_DIR}/_deps/curl-8.1.0.tar.xz")
         file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/_deps")
 
-        dsos_fetch_archive_if_missing("curl" "${_curl_url}" "${_curl_archive}" "${_curl_hash}")
-        dsos_append_dep_status("curl: ${curl_FETCH_STATUS}")
+        rekindled_fetch_archive_if_missing("curl" "${_curl_url}" "${_curl_archive}" "${_curl_hash}")
+        rekindled_append_dep_status("curl: ${curl_FETCH_STATUS}")
 
         set(_curl_src_dir "${CMAKE_BINARY_DIR}/_deps/curl-src")
-        dsos_set_fetchcontent_source_dir_if_cached("curl" "${_curl_src_dir}")
+        rekindled_set_fetchcontent_source_dir_if_cached("curl" "${_curl_src_dir}")
 
         FetchContent_Declare(
             curl

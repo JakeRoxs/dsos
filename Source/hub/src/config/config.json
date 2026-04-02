@@ -1,0 +1,6 @@
+{
+  "port": 50020,
+  "server_timeout_ms": 240000,
+  "poll_interval_ms": 30000,
+  "cors_origins": "*"
+}

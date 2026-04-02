@@ -45,14 +45,14 @@ FROM ubuntu@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072fee
 # default Steam AppID can be overridden with --build-arg STEAM_APP_ID=xxxx
 ARG STEAM_APP_ID=374320
 
-RUN mkdir -p /opt/ds3os/Saved \
-    && if ! id ds3os >/dev/null 2>&1; then \
-           useradd -r -s /bin/bash ds3os; \
+RUN mkdir -p /opt/rekindled-ds3-server/Saved \
+    && if ! id rekindled >/dev/null 2>&1; then \
+           useradd -r -s /bin/bash rekindled; \
        fi \
-    && chown ds3os:ds3os /opt/ds3os/Saved \
-    && chown ds3os:ds3os /opt/ds3os \
-    && chmod 755 /opt/ds3os/Saved \
-    && chmod 755 /opt/ds3os \
+    && chown rekindled:rekindled /opt/rekindled-ds3-server/Saved \
+    && chown rekindled:rekindled /opt/rekindled-ds3-server \
+    && chmod 755 /opt/rekindled-ds3-server/Saved \
+    && chmod 755 /opt/rekindled-ds3-server \
     && apt update \
     # Healthcheck needs curl to check the server
     && apt install -y --no-install-recommends --reinstall ca-certificates curl \
@@ -70,22 +70,22 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 # write the AppID from build arg
 ENV STEAM_APP_ID=${STEAM_APP_ID}
-RUN echo "$STEAM_APP_ID" >> /opt/ds3os/steam_appid.txt
+RUN echo "$STEAM_APP_ID" >> /opt/rekindled-ds3-server/steam_appid.txt
 
 # Copy only the built runtime outputs from the build stage into the runtime image.
 # Keep the runtime image small by avoiding a full /build copy.
-COPY --from=build /build/bin/x64_release/. /opt/ds3os/
+COPY --from=build /build/bin/x64_release/. /opt/rekindled-ds3-server/
 
 # Diagnostic helper (optional, can be removed in final image).
-# RUN ls -al /opt/ds3os && find /opt/ds3os -maxdepth 4 -type f -print
+# RUN ls -al /opt/rekindled-ds3-server && find /opt/rekindled-ds3-server -maxdepth 4 -type f -print
 
 # If you intentionally want to keep /build for debug, uncomment the following:
 # COPY --from=build /build /build
-COPY --from=steam /root/.local/share/Steam/steamcmd/linux64/steamclient.so /opt/ds3os/steamclient.so
+COPY --from=steam /root/.local/share/Steam/steamcmd/linux64/steamclient.so /opt/rekindled-ds3-server/steamclient.so
 
-ENV LD_LIBRARY_PATH="/opt/ds3os"
+ENV LD_LIBRARY_PATH="/opt/rekindled-ds3-server"
 
-USER ds3os
-WORKDIR /opt/ds3os
-ENTRYPOINT ["/opt/ds3os/Server"]
+USER rekindled
+WORKDIR /opt/rekindled-ds3-server
+ENTRYPOINT ["/opt/rekindled-ds3-server/Server"]
 CMD [] 

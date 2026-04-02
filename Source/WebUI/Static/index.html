@@ -1,12 +1,14 @@
 <!--
-  Dark Souls 3 - Open Server
+  Rekindled Server
   Copyright (C) 2021 Tim Leonard
+  Copyright (C) 2026 Jake Morgeson
  
   This program is free software; licensed under the MIT license.
   You should have received a copy of the license along with this program.
   If not, see <https://opensource.org/licenses/MIT>.
 -->
-<html>
+<!doctype html>
+<html lang="en">
     <head>
         <link
             rel="stylesheet"
@@ -32,7 +34,7 @@
         ></script>
         <script src="js/dialog-polyfill.js"></script>
         <script src="js/lang.js"></script>
-        <title data-i18n="html_title">Dark Souls Open Server</title>
+        <title data-i18n="html_title">Rekindled Server</title>
         <link rel="stylesheet" type="text/css" href="css/dialog-polyfill.css" />
         <link rel="stylesheet" href="css/main.css" />
         <script defer src="js/main.js"></script>
@@ -143,7 +145,7 @@
             <header class="mdl-layout__header">
                 <div class="mdl-layout__header-row">
                     <span class="mdl-layout-title" data-i18n="title"
-                        >Dark Souls Open Server</span
+                        >Rekindled Server</span
                     >
                     <div class="mdl-layout-spacer">
                         <span
@@ -164,18 +166,23 @@
                         class="mdl-menu mdl-menu--bottom-right mdl-js-menu mdl-js-ripple-effect"
                         for="demo-menu-lower-right"
                     >
-                        <!--<li class="mdl-menu__item">Language based on the browser</li>-->
-                        <li
-                            class="mdl-menu__item"
-                            onclick="saveLanguage('en-US')"
-                        >
-                            English
+                        <li class="mdl-menu__item">
+                            <button
+                                type="button"
+                                class="mdl-button mdl-js-button"
+                                onclick="saveLanguage('en-US')"
+                            >
+                                English
+                            </button>
                         </li>
-                        <li
-                            class="mdl-menu__item"
-                            onclick="saveLanguage('zh-CN')"
-                        >
-                            中文
+                        <li class="mdl-menu__item">
+                            <button
+                                type="button"
+                                class="mdl-button mdl-js-button"
+                                onclick="saveLanguage('zh-CN')"
+                            >
+                                中文
+                            </button>
                         </li>
                     </ul>
                     <!-- Change Language -->
@@ -820,10 +827,14 @@
             <!--
             <footer class="mdl-mini-footer">
                 <div class="mdl-mini-footer__left-section">
-                <div class="mdl-logo">DS3OS - Copyright (C) 2021 Tim Leonard</div>
-                <ul class="mdl-mini-footer__link-list">
-                    <li><a href="https://github.com/jakeroxs/ds3os">GitHub</a></li>
-                </ul>
+                    <div class="mdl-logo">
+                        Rekindled Server<br>
+                        Copyright (C) 2021 Tim Leonard<br>
+                        Copyright (C) 2026 Jake Morgeson
+                    </div>
+                    <ul class="mdl-mini-footer__link-list">
+                        <li><a href="https://github.com/jakeroxs/rekindled-server">GitHub</a></li>
+                    </ul>
                 </div>
             </footer>
             -->

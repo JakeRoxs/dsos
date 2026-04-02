@@ -1,4 +1,4 @@
-# Common CMake helper definitions for dsos.
+# Common CMake helper definitions for Rekindled Server.
 # This file is normally included by the root CMakeLists.txt.
 
 # util_setup_folder_structure is used by project CMakeLists for IDE folder grouping.

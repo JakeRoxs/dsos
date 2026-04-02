@@ -1,8 +1,8 @@
 ![Dark Souls 3 - Open Server](./Resources/banner.png?raw=true)
 
-![GitHub license](https://img.shields.io/github/license/jakeroxs/ds3os)
-![GitHub release](https://img.shields.io/github/release/jakeroxs/ds3os)
-![GitHub downloads](https://img.shields.io/github/downloads/jakeroxs/ds3os/total)
+![GitHub license](https://img.shields.io/github/license/jakeroxs/rekindled-server)
+![GitHub release](https://img.shields.io/github/release/jakeroxs/rekindled-server)
+![GitHub downloads](https://img.shields.io/github/downloads/jakeroxs/rekindled-server/total)
 
 <div align="center">
 
@@ -12,7 +12,7 @@ English | [简体中文](./README_zhCN.md)
 
 # Note:
 
-This is a fork of dark souls open server that currently just implements a few open PRs from the original repo.
+This is a fork of the original DS3OS project, now rebranded as Rekindled Server.
 
 # What is this project?
 
@@ -28,7 +28,7 @@ FROM SOFTWARE deserves your support too for the excellent work they do, please b
 
 # Where can I download it?
 
-Downloads are available on the github releases page - https://github.com/jakeroxs/ds3os/releases
+Downloads are available on the github releases page - https://github.com/jakeroxs/rekindled-server/releases
 
 # How do I use it?
 
@@ -69,7 +69,7 @@ Most of the games core functionality works now, with some degree of variance to 
 | Quick Matches (Arenas)      | :heavy_check_mark: | :heavy_check_mark: |
 | Telemetry/Misc              | :heavy_check_mark: | :heavy_check_mark: |
 | Ticket Authentication       | :heavy_check_mark: | :heavy_check_mark: |
-| Master Server Support       | :heavy_check_mark: | :heavy_check_mark: |
+| Hub Server Support          | :heavy_check_mark: | :heavy_check_mark: |
 | Loader Support              | :heavy_check_mark: | :heavy_check_mark: |
 | WebUI For Admin             | :heavy_check_mark: | :heavy_check_mark: |
 | Sharding Support            | :heavy_check_mark: | :heavy_check_mark: |
@@ -82,7 +82,7 @@ Future roadmap:
 
 # Will this ban my account on the retail server?
 
-DSOS uses its own save files, as long as you don't copy ds3os saves back to your retail saves you should be fine.
+Rekindled Server uses its own save files, as long as you don't copy Rekindled Server saves back to your retail saves you should be fine.
 
 # FAQ
 
@@ -92,20 +92,21 @@ After running the server once a file will be created at Saved/default/config.jso
 
 ## Why aren't my save files appearing?
 
-DSOS uses its own saves to avoid any issues with retail game saves. If you want to transfer your retail saves to DSOS, click the settings (cog) icon at the bottom of the loader and press the copy retail saves button.
+Rekindled Server uses its own saves to avoid any issues with retail game saves. If you want to transfer your retail saves to Rekindled Server, click the settings (cog) icon at the bottom of the loader and press the copy retail saves button.
 
-We don't provide an automation option to copy ds3os saves back to retail saves for safety. If you ~really~ want to do this you can find the folder the saves are stored in and rename the .ds3os files to .sl2.
+We don't provide an automation option to copy Rekindled Server saves back to retail saves for safety. If you ~really~ want to do this you can find the folder the saves are stored in and rename the .rekindled files to .sl2.
 
 ## Can I run the server via docker?
 
-Yes, there are 2 docker containers currently published for DSOS, these are automatically updated each time a new release is made:
+Yes, there are 2 docker containers currently published for Rekindled Server, these are automatically updated each time a new release is made:
 
-jakeroxs/ds3os - This is the main server and the one you almost certainly want.
-jakeroxs/dsos-master - This is for the master server, unless you are making a fork of ds3os, you probably don't need this.
+jakeroxs/rekindled-ds2s-server - This is the main Dark Souls 2: SOTFS server.
+jakeroxs/rekindled-ds3-server - This is the main Dark Souls 3 server.
+jakeroxs/rekindled-hub - This is for the hub server, eventually hub servers will communicate between each other if federation is enabled.
 
-If you want a quick one-liner to run the server, you can use this. Note that it mounts the Saved folder to the host filesystem at /opt/ds3os/Saved, making it easier to modify the configuration files. Access /opt/ds3os/Saved to view and modify the configuration files.
+If you want a quick one-liner to run the server, you can use this. Note that it mounts the Saved folder to the host filesystem at /opt/rekindled-server/Saved, making it easier to modify the configuration files. Access /opt/rekindled-server/Saved to view and modify the configuration files.
 
-`sudo mkdir -p /opt/ds3os/Saved && sudo chown 1000:1000 /opt/ds3os/Saved && sudo docker run -d -m 2G --restart always --net host --mount type=bind,source=/opt/ds3os/Saved,target=/opt/ds3os/Saved jakeroxs/ds3os:latest`
+`sudo mkdir -p /opt/rekindled-server/Saved && sudo chown 1000:1000 /opt/rekindled-server/Saved && sudo docker run -d -m 2G --restart always --net host --mount type=bind,source=/opt/rekindled-server/Saved,target=/opt/rekindled-server/Saved jakeroxs/rekindled-server:latest`
 
 ### Docker Compose example
 
@@ -133,14 +134,14 @@ If the server is being hosted by yourself and the above doesn't solve your issue
 
 The settings are all documented in the source code in this file, in future I'll write some more detailed documentation.
 
-https://github.com/jakeroxs/ds3os/blob/main/Source/Server/Config/RuntimeConfig.h
+https://github.com/jakeroxs/rekindled-server/blob/main/Source/Server/Config/RuntimeConfig.h
 
 # How do I build it?
 
 The project is written in C++17 and uses CMake for cross-platform builds.
 
 **Required:** CMake should be configured with Ninja by default.
-The repo now enforces this in `CMakeLists.txt` (fatal configure error when non-Ninja is used unless `-DDSOS_ALLOW_NON_NINJA=ON`).
+The repo now enforces this in `CMakeLists.txt` (fatal configure error when non-Ninja is used unless `-DREKINDLED_ALLOW_NON_NINJA=ON`).
 
 Use:
 
@@ -148,8 +149,8 @@ Use:
 
 Optional fallback (only with explicit override):
 
-- `Visual Studio 18 2026` (MSVC / Clang-CL) with `-DDSOS_ALLOW_NON_NINJA=ON`
-- `Visual Studio 17 2022` (if available) with `-DDSOS_ALLOW_NON_NINJA=ON`
+- `Visual Studio 18 2026` (MSVC / Clang-CL) with `-DREKINDLED_ALLOW_NON_NINJA=ON`
+- `Visual Studio 17 2022` (if available) with `-DREKINDLED_ALLOW_NON_NINJA=ON`
 
 ## Prerequisites
 
@@ -204,14 +205,14 @@ pwsh .\Tools\build-cmake.ps1 -Generator "Visual Studio 18 2026" -BuildType Relea
 
 ```sh
 # to build a package
-nix build github:jakeroxs/ds3os
+nix build github:jakeroxs/rekindled-server
 # to run it directly
-nix run github:jakeroxs/ds3os
-# to run master-server
-nix run github:jakeroxs/ds3os#master-server
+nix run github:jakeroxs/rekindled-server
+# to run hub
+nix run github:jakeroxs/rekindled-server#hub
 ```
 
-The nix version stores the configs in `${XDG_CONFIG_HOME:-$HOME/.config}/ds3os`
+The nix version stores the configs in `${XDG_CONFIG_HOME:-$HOME/.config}/rekindled-server`
 
 # Whats in the repository?
 
@@ -220,9 +221,9 @@ The nix version stores the configs in `${XDG_CONFIG_HOME:-$HOME/.config}/ds3os`
 ├── Protobuf/              Contains the protobuf definitions used by the server's network traffic. Compiling them is done via the bat file in Tools/
 ├── Resources/             General resources used for building and packaging - icons/readmes/etc.
 ├── Source/                All source code for the project.
-│   ├── Injector/          This is the DLL that gets injected into the game to provide DS3OS's functionality.
-│   ├── Loader/            WinForms launcher that patches the game and starts it with all network traffic redirected to a custom ds3os server.
-│   ├── MasterServer/      NodeJS source code for a simple API server for advertising and listing active servers.
+│   ├── Injector/          This is the DLL that gets injected into the game to provide Rekindled Server's functionality.
+│   ├── Loader/            WinForms launcher that patches the game and starts it with all network traffic redirected to a custom Rekindled Server.
+│   ├── hub/               NodeJS source code for a simple API server for advertising and listing active servers.
 │   ├── Server/            Source code for the main server.
 │   ├── Server.DarkSouls3/ Source code thats special to dark souls 3 support.
 │   ├── Server.DarkSouls2/ Source code thats special to dark souls 2 support.

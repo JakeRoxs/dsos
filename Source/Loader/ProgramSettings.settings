@@ -5,8 +5,8 @@
     <Setting Name="server_config_json" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="master_server_url" Type="System.String" Scope="User">
-      <Value Profile="(Default)">https://dsos.jakesws.xyz</Value>
+    <Setting Name="hub_server_url" Type="System.String" Scope="User">
+      <Value Profile="(Default)">https://rekindled.jakesws.xyz</Value>
     </Setting>
     <Setting Name="hide_passworded" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>

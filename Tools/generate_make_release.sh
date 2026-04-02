@@ -24,6 +24,13 @@ echo "$CMakeExePath -S $RootPath -B $BuildPath -G \"$GENERATOR\""
 $CMakeExePath -S $RootPath -B $BuildPath -G "$GENERATOR" \
   -DCMAKE_BUILD_TYPE=Release
 
+# Ensure the solution file uses the renamed branding.
+if [ -f "$BuildPath/rekindled-server.sln" ]; then
+  echo "Using existing rekindled-server.sln"
+else
+  echo "ERROR: rekindled-server.sln not found"
+fi
+
 # Explicit canonical output location for packaging and Docker.
 OUTPUT_PATH="$RootPath/bin/x64_release"
 mkdir -p "$OUTPUT_PATH"

@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -106,7 +107,7 @@ void WriteToConsole(ConsoleColor Color, const char *Message)
             {
                 tmp = "/tmp";
             }
-            std::string logPath = std::string(tmp) + "/ds3os_injector.log";
+            std::string logPath = std::string(tmp) + "/rekindled_injector.log";
             g_LogFile = fopen(logPath.c_str(), "a");
         }
 

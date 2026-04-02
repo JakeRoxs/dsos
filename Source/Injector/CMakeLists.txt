@@ -1,6 +1,7 @@
 # ================================================================================================
-#  DS3OS
+#  Rekindled Server
 #  Copyright (C) 2021 Tim Leonard
+#  Copyright (C) 2026 Jake Morgeson
 # ================================================================================================
 
 project(Injector C CXX)
@@ -66,7 +67,7 @@ foreach(target IN ITEMS InjectorCore ${PROJECT_NAME})
         )
     endif()
     target_link_libraries(${target} PUBLIC Shared detours)
-    util_setup_folder_structure(${target} SOURCES "DS3OS")
+    util_setup_folder_structure(${target} SOURCES "Rekindled Server")
 endforeach()
 
 

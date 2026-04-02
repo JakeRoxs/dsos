@@ -66,3 +66,10 @@ echo Generating %RootPath%
 echo %CMakeExePath% -S %RootPath% -B %BuildPath% -G "%GENERATOR%"
 
 "%CMakeExePath%" -S "%RootPath%" -B "%BuildPath%" -G "%GENERATOR%"
+
+REM Ensure the solution file is the new branded name.
+if exist "%BuildPath%\rekindled-server.sln" (
+    echo Found rekindled-server.sln
+) else (
+    echo ERROR: rekindled-server.sln not found
+)

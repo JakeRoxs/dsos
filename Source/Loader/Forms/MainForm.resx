@@ -1172,7 +1172,7 @@
     <value>144, 32</value>
   </data>
   <data name="$this.Text" xml:space="preserve">
-    <value>Dark Souls - Open Server Loader</value>
+    <value>Rekindled Server Launcher</value>
   </data>
   <data name="&gt;&gt;SettingsButton.Parent" xml:space="preserve">
     <value>$this</value>

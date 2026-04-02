@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license. 
  * You should have received a copy of the license along with this program. 
@@ -20,7 +21,7 @@ using System.Threading.Tasks;
 
 namespace Loader
 {
-  public static class MasterServerApi
+  public static class HubApi
   {
     private static readonly HttpClient Client = new HttpClient();
 
@@ -45,7 +46,7 @@ namespace Loader
       public string PublicKey { get; set; } = string.Empty;
     }
 
-    static MasterServerApi()
+    static HubApi()
     {
       Client.DefaultRequestHeaders.Accept.Clear();
       Client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -67,7 +68,7 @@ namespace Loader
         HttpResponseMessage Response = Client.Send(Request);
         if (!Response.IsSuccessStatusCode)
         {
-          Debug.WriteLine("Got error status when trying to query master server: {0}", Response.StatusCode);
+          Debug.WriteLine("Got error status when trying to query hub server: {0}", Response.StatusCode);
           return null;
         }
 
@@ -76,14 +77,14 @@ namespace Loader
         ResponseTask.Wait();
         if (!ResponseTask.IsCompletedSuccessfully)
         {
-          Debug.WriteLine("Got error status when trying to query master server.");
+          Debug.WriteLine("Got error status when trying to query hub server.");
           return null;
         }
 
         ResultType TypedResponse = ResponseTask.Result;
         if (TypedResponse.Status != "success")
         {
-          Debug.WriteLine("Got error when trying to query master server: {0}", TypedResponse.Status);
+          Debug.WriteLine("Got error when trying to query hub server: {0}", TypedResponse.Status);
           return null;
         }
 
@@ -99,7 +100,7 @@ namespace Loader
 
     public static List<ServerConfig> ListServers()
     {
-      ListServersResponse Result = DoRequest<ListServersResponse>(HttpMethod.Get, ProgramSettings.Default.master_server_url + "/api/v1/servers");
+      ListServersResponse Result = DoRequest<ListServersResponse>(HttpMethod.Get, ProgramSettings.Default.hub_server_url + "/api/v1/servers");
       if (Result != null && Result.Servers != null)
       {
         foreach (ServerConfig config in Result.Servers)
@@ -122,7 +123,7 @@ namespace Loader
       GetPublicKeyRequest Request = new GetPublicKeyRequest();
       Request.Password = Password;
 
-      GetPublicKeyResponse Result = DoRequest<GetPublicKeyResponse>(HttpMethod.Post, ProgramSettings.Default.master_server_url + "/api/v1/servers/" + ServerId + "/public_key", JsonContent.Create<GetPublicKeyRequest>(Request));
+      GetPublicKeyResponse Result = DoRequest<GetPublicKeyResponse>(HttpMethod.Post, ProgramSettings.Default.hub_server_url + "/api/v1/servers/" + ServerId + "/public_key", JsonContent.Create<GetPublicKeyRequest>(Request));
       if (Result != null)
       {
         return Result.PublicKey;

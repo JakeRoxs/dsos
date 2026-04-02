@@ -113,7 +113,7 @@ jobs:
       - name: Restore NuGet packages (Windows)
         if: matrix.name == 'windows-ninja'
         working-directory: ${{ github.workspace }}
-        run: dotnet restore ./intermediate/vs2022/ds3os.sln
+        run: dotnet restore ./intermediate/vs2022/rekindled-server.sln
 
       - name: Build (Windows, Ninja)
         if: matrix.name == 'windows-ninja'

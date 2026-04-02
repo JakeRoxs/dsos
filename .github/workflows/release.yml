@@ -17,13 +17,13 @@ permissions:
 
 env:
   # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: ./intermediate/vs2022/ds3os.sln
+  SOLUTION_FILE_PATH: ./intermediate/vs2022/rekindled-server.sln
   BUILD_CONFIGURATION: Release
 
-  # Version number being build.
+  # Version number being built.
   VERSION_NUMBER_POSTFIX: ${{ github.event.inputs.version_postfix }}
 
-  # Version number being build.
+  # Version number being built.
   VERSION_NUMBER: ${{ github.event.inputs.version }}
 
 jobs:
@@ -191,7 +191,7 @@ jobs:
       - name: Zip Release
         uses: vimtor/action-zip@v1
         with:
-          files: DS3OS/
+          files: rekindled-server/
           dest: ${{ matrix.platform }}-${{ env.VERSION_NUMBER }}${{ env.VERSION_NUMBER_POSTFIX }}.zip
 
       - name: Upload Artifact
@@ -208,15 +208,15 @@ jobs:
     strategy:
       matrix:
         image:
-          - context: ./Source/MasterServer
-            file: ./Source/MasterServer/Dockerfile
-            tag: dsos-master:latest
+          - context: ./Source/hub
+            file: ./Source/hub/Dockerfile
+            tag: rekindled-hub:latest
           - context: .
             file: ./DarkSouls3.Dockerfile
-            tag: ds3os:latest
+            tag: rekindled-ds3-server:latest
           - context: .
             file: ./DarkSouls2.Dockerfile
-            tag: ds2os:latest
+            tag: rekindled-ds2s-server:latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

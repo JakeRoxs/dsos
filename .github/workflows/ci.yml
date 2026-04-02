@@ -21,7 +21,7 @@ concurrency:
 
 env:
   # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: ./intermediate/vs2022/ds3os.sln
+  SOLUTION_FILE_PATH: ./intermediate/vs2022/rekindled-server.sln
   BUILD_CONFIGURATION: Release
 
 jobs:

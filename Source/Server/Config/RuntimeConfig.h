@@ -1,6 +1,7 @@
 /*
- * Dark Souls 3 - Open Server
+ * Rekindled Server
  * Copyright (C) 2021 Tim Leonard
+ * Copyright (C) 2026 Jake Morgeson
  *
  * This program is free software; licensed under the MIT license.
  * You should have received a copy of the license along with this program.
@@ -165,7 +166,7 @@ public:
     // at runtime via environment variables (e.g. for containerized deployments):
     //   MASTER_SERVER_IP
     //   MASTER_SERVER_PORT
-    std::string MasterServerIp = "dsos.jakesws.xyz";
+    std::string MasterServerIp = "rekindled.jakesws.xyz";
 
     // Port the master server lists for connections at MasterServerIp;
     int MasterServerPort = 50020;
@@ -183,7 +184,7 @@ public:
 
     // If set this server supports being sharded into multiple sub-servers to help users from 
     // having to run servers themselves. This is generally only expected to be used on
-    // the main ds3os servers.
+    // the main rekindled servers.
     bool SupportSharding = false;
 
     // If set the user will need to enter a password to receive the keys to enter the 
@@ -225,7 +226,7 @@ public:
 
     // Announcements that show up when a user joins the game.
     std::vector<RuntimeConfigAnnouncement> Announcements = {
-        { "Welcome to DSOS", "\nYou have connected to an unofficial, work-in-progress, Dark Souls server. Stability is not guaranteed, but welcome!\n\nMore information on this project is available here:\nhttps://github.com/jakeroxs/ds3os" }
+        { "Welcome to Rekindled Server", "\nYou have connected to an unofficial, work-in-progress, Dark Souls server. Stability is not guaranteed, but welcome!\n\nMore information on this project is available here:\nhttps://github.com/jakeroxs/rekindled-server" }
     };
 
     // How often (in seconds) between each database trim.

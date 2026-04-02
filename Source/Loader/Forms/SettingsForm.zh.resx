@@ -131,7 +131,7 @@
 </value>
   </data>
   <data name="CopySavesButton.Text" xml:space="preserve">
-    <value>将原版存档复制到DSOS</value>
+    <value>将原版存档复制到 Rekindled Server</value>
   </data>
   <data name="$this.Text" xml:space="preserve">
     <value>设置</value>

@@ -45,14 +45,14 @@ FROM ubuntu@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072fee
 # default Steam AppID can be overridden with --build-arg STEAM_APP_ID=xxxx
 ARG STEAM_APP_ID=335300
 
-RUN mkdir -p /opt/ds2os/Saved \
-    && if ! id ds2os >/dev/null 2>&1; then \
-           useradd -r -s /bin/bash ds2os; \
+RUN mkdir -p /opt/rekindled-ds2s-server/Saved \
+    && if ! id rekindled >/dev/null 2>&1; then \
+           useradd -r -s /bin/bash rekindled; \
        fi \
-    && chown ds2os:ds2os /opt/ds2os/Saved \
-    && chown ds2os:ds2os /opt/ds2os \
-    && chmod 755 /opt/ds2os/Saved \
-    && chmod 755 /opt/ds2os \
+    && chown rekindled:rekindled /opt/rekindled-ds2s-server/Saved \
+    && chown rekindled:rekindled /opt/rekindled-ds2s-server \
+    && chmod 755 /opt/rekindled-ds2s-server/Saved \
+    && chmod 755 /opt/rekindled-ds2s-server \
     && apt update \
     # Healthcheck needs curl to check the server
     && apt install -y --no-install-recommends --reinstall ca-certificates curl \
@@ -71,22 +71,22 @@ HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
 
 # write the AppID from build arg
 ENV STEAM_APP_ID=${STEAM_APP_ID}
-RUN echo "$STEAM_APP_ID" >> /opt/ds2os/steam_appid.txt
+RUN echo "$STEAM_APP_ID" >> /opt/rekindled-ds2s-server/steam_appid.txt
 
 # Copy only the built runtime outputs from the build stage into the runtime image.
 # Avoid copying the full /build tree to keep image size small.
-COPY --from=build /build/bin/x64_release/. /opt/ds2os/
+COPY --from=build /build/bin/x64_release/. /opt/rekindled-ds2s-server/
 
 # Optional debug output during build (comment out in production):
-# RUN ls -al /opt/ds2os && find /opt/ds2os -maxdepth 4 -type f -print
+# RUN ls -al /opt/rekindled-ds2s-server && find /opt/rekindled-ds2s-server -maxdepth 4 -type f -print
 
 # Uncomment this to preserve full /build for inspection.
 # COPY --from=build /build /build
-COPY --from=steam /root/.local/share/Steam/steamcmd/linux64/steamclient.so /opt/ds2os/steamclient.so
+COPY --from=steam /root/.local/share/Steam/steamcmd/linux64/steamclient.so /opt/rekindled-ds2s-server/steamclient.so
 
-ENV LD_LIBRARY_PATH="/opt/ds2os"
+ENV LD_LIBRARY_PATH="/opt/rekindled-ds2s-server"
 
-USER ds2os
-WORKDIR /opt/ds2os
-ENTRYPOINT ["/opt/ds2os/Server"]
+USER rekindled
+WORKDIR /opt/rekindled-ds2s-server
+ENTRYPOINT ["/opt/rekindled-ds2s-server/Server"]
 CMD [] 

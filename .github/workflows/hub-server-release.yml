@@ -26,10 +26,10 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Build and push master-server docker
+      - name: Build and push hub-server docker
         uses: docker/build-push-action@v7
         with:
-          context: ./Source/MasterServer/
-          file: ./Source/MasterServer/Dockerfile
+          context: ./Source/hub/
+          file: ./Source/hub/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/dsos-master:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/rekindled-hub:latest

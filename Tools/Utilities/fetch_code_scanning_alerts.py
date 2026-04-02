@@ -9,13 +9,13 @@ open alerts on GitHub or SonarQube. It supports:
 - SonarQube config via CLI args or `mcp.json` (`servers.sonarqube.env.SONARQUBE_*`)
 - Fallback to `sonar-project.properties` for `sonar.projectKey`
 - `--group-by rule` (default) to group by rule names across repositories
-- `--group-by thirdparty` to use repository name (e.g. `dsos`) for in-repo code, and library folder for `Source/ThirdParty`
+- `--group-by thirdparty` to use repository name (e.g. `rekindled-server`) for in-repo code, and library folder for `Source/ThirdParty`
 - `--group-by thirdparty_rule` to group by vendor+rule
 - De-dup/update behavior: existing todo file is updated if content changed, otherwise left alone
 
 Usage:
   python Tools/Utilities/fetch_code_scanning_alerts.py \
-    --owner jakeroxs --repo dsos \
+    --owner jakeroxs --repo rekindled-server \
     --write-todos
 
 By default it fetches open alerts (state=open) and requests 100 items per page.
@@ -1119,16 +1119,16 @@ class AlertGroupingAndTodoRenderingTests(unittest.TestCase):
     def test_group_by_thirdparty_project_defaults_for_repo_sources(self):
         alert = {
             "rule": {"name": "DummyRule"},
-            "most_recent_instance": {"location": {"path": "Source/dsos/File.cs", "start_line": 1}},
+            "most_recent_instance": {"location": {"path": "Source/rekindled-server/File.cs", "start_line": 1}},
         }
-        self.assertEqual(_group_by_thirdparty(alert, "dsos"), "dsos")
+        self.assertEqual(_group_by_thirdparty(alert, "rekindled-server"), "rekindled-server")
 
     def test_group_by_thirdparty_rule_includes_repo_name_when_on_repo(self):
         alert = {
             "rule": {"name": "DummyRule"},
-            "most_recent_instance": {"location": {"path": "Source/dsos/File.cs", "start_line": 1}},
+            "most_recent_instance": {"location": {"path": "Source/rekindled-server/File.cs", "start_line": 1}},
         }
-        self.assertEqual(_group_by_thirdparty_rule(alert, "dsos"), "dsos::DummyRule")
+        self.assertEqual(_group_by_thirdparty_rule(alert, "rekindled-server"), "rekindled-server::DummyRule")
 
     def test_write_todos_reuses_existing_file_and_updates_if_changed(self):
         alerts = [
