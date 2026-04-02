@@ -31,8 +31,8 @@ jobs:
 
       - name: Restore Loader projects
         run: |
-          dotnet restore Source/Loader/Loader.csproj
-          dotnet restore Source/Loader.Tests/Loader.Tests.csproj
+          dotnet restore Source/Loader/Loader.csproj -p:EnableWindowsTargeting=true
+          dotnet restore Source/Loader.Tests/Loader.Tests.csproj -p:EnableWindowsTargeting=true
 
       - name: Install SonarScanner for .NET
         run: |
@@ -52,8 +52,8 @@ jobs:
             /d:sonar.sources="Source/Loader,Source/Loader.Tests" \
             /d:sonar.exclusions="Source/ThirdParty/**,Protobuf/**,build/**" \
             /d:sonar.sourceEncoding="UTF-8"
-          dotnet build Source/Loader/Loader.csproj Source/Loader.Tests/Loader.Tests.csproj --configuration Release
-          dotnet test Source/Loader.Tests/Loader.Tests.csproj --configuration Release --no-build
+          dotnet build Source/Loader/Loader.csproj Source/Loader.Tests/Loader.Tests.csproj --configuration Release -p:EnableWindowsTargeting=true
+          dotnet test Source/Loader.Tests/Loader.Tests.csproj --configuration Release --no-build -p:EnableWindowsTargeting=true
           dotnet sonarscanner end /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
 
   sonar-server:
