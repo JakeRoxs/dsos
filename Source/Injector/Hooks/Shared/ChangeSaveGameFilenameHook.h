@@ -12,7 +12,7 @@
 
 #include "Injector/Hooks/Hook.h"
 
-// Hooks CreateFile and changes the savegame extension from sl2 to rekindled-server
+// Hooks CreateFile and changes the savegame extension from .sl2 to .rds
 class ChangeSaveGameFilenameHook : public Hook {
 public:
   virtual HookError Install(const InjectorContext& context) override;
