@@ -15,9 +15,9 @@ namespace Loader.Tests
     public void ConfigService_SaveAndLoadSettings_WorksForExistingExePath()
     {
       // Arrange
-      string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+      string tempPath = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString());
       Directory.CreateDirectory(tempPath);
-      string exeFile = Path.Combine(tempPath, "DarkSoulsIII.exe");
+      string exeFile = Path.Join(tempPath, "DarkSoulsIII.exe");
       File.WriteAllText(exeFile, "stub");
 
       var configService = new Loader.Services.ConfigService();

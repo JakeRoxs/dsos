@@ -42,10 +42,10 @@ namespace Loader
 
     private bool IgnoreInputChanges = false;
 
-    private string MachinePrivateIp = "";
-    private string MachinePublicIp = "";
+    private readonly string MachinePrivateIp = "";
+    private readonly string MachinePublicIp = "";
 
-    private string[] ColumnNames = { "Server Name", "Player Count", "Description" };
+    private readonly string[] ColumnNames = { "Server Name", "Player Count", "Description" };
 
     public static string OfficialServer = NetUtils.HostnameToIPv4("rekindled.jakesws.xyz");
 
@@ -166,7 +166,7 @@ namespace Loader
   class ServerListSorter : System.Collections.IComparer
   {
     public int SortColumn = 1;
-    public int SortOrder = 0; // 0="Smart" Order, 1=Ascending, 2=Descending
+    public readonly int SortOrder = 0; // 0="Smart" Order, 1=Ascending, 2=Descending
 
     public int Compare(object? x, object? y)
     {

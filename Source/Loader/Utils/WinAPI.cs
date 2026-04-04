@@ -328,8 +328,6 @@ namespace Loader
 
     public static IntPtr GetProcessModuleBaseAddress(IntPtr hProcess)
     {
-      List<String> moduleNames = new List<String>();
-
       IntPtr[] hMods = new IntPtr[1024];
 
       GCHandle hPinnedModules = GCHandle.Alloc(hMods, GCHandleType.Pinned);
@@ -338,11 +336,12 @@ namespace Loader
       uint uiSize = (uint)(Marshal.SizeOf(typeof(IntPtr)) * hMods.Length);
       uint cbNeeded = 0;
 
-      if (EnumProcessModulesEx(hProcess, pModules, uiSize, out cbNeeded, DwFilterFlag.LIST_MODULES_ALL) == true)
+      bool enumSucceeded = EnumProcessModulesEx(hProcess, pModules, uiSize, out cbNeeded, DwFilterFlag.LIST_MODULES_ALL);
+      if (enumSucceeded)
       {
         Int32 uiTotalNumberofModules = (Int32)(cbNeeded / (Marshal.SizeOf(typeof(IntPtr))));
 
-        for (int i = 0; i < (int)uiTotalNumberofModules; i++)
+        for (int i = 0; i < uiTotalNumberofModules; i++)
         {
           MODULEINFO modInfo;
           uint modInfoSize = (uint)Marshal.SizeOf(typeof(MODULEINFO));
@@ -352,9 +351,22 @@ namespace Loader
             return modInfo.lpBaseOfDll;
           }
         }
-      }
 
-      int error = GetLastError();
+        if (uiTotalNumberofModules == 0)
+        {
+          Debug.WriteLine("GetProcessModuleBaseAddress: EnumProcessModulesEx succeeded but returned zero modules.");
+        }
+        else
+        {
+          int lastError = GetLastError();
+          Debug.WriteLine($"GetProcessModuleBaseAddress: EnumProcessModulesEx succeeded but GetModuleInformation failed on all modules, lastError={lastError}");
+        }
+      }
+      else
+      {
+        int lastError = GetLastError();
+        Debug.WriteLine($"GetProcessModuleBaseAddress: EnumProcessModulesEx failed, error={lastError}");
+      }
 
       hPinnedModules.Free();
 
@@ -381,12 +393,9 @@ namespace Loader
       var objBasic = new OBJECT_BASIC_INFORMATION();
       IntPtr ipBasic = IntPtr.Zero;
       var objObjectType = new OBJECT_TYPE_INFORMATION();
-      IntPtr ipObjectType = IntPtr.Zero;
-      IntPtr ipObjectName = IntPtr.Zero;
+      IntPtr ipObjectType;
       string strObjectTypeName = "";
       int nLength = 0;
-      int nReturn = 0;
-      IntPtr ipTemp = IntPtr.Zero;
 
       if (!WinAPI.DuplicateHandle(
           m_ipProcessHwnd,
@@ -412,12 +421,12 @@ namespace Loader
 
       ipObjectType = Marshal.AllocHGlobal(objBasic.TypeInformationLength);
       nLength = objBasic.TypeInformationLength;
-      while ((uint)(nReturn = WinAPI.NtQueryObject(
+      while ((uint)WinAPI.NtQueryObject(
                       ipHandle,
                       (int)ObjectInformationClass.ObjectTypeInformation,
                       ipObjectType,
                       nLength,
-                      ref nLength)) == STATUS_INFO_LENGTH_MISMATCH)
+                      ref nLength) == STATUS_INFO_LENGTH_MISMATCH)
       {
         Marshal.FreeHGlobal(ipObjectType);
         ipObjectType = Marshal.AllocHGlobal(nLength);
@@ -438,12 +447,9 @@ namespace Loader
       IntPtr ipHandle = IntPtr.Zero;
       var objBasic = new OBJECT_BASIC_INFORMATION();
       IntPtr ipBasic = IntPtr.Zero;
-      IntPtr ipObjectType = IntPtr.Zero;
       var objObjectName = new OBJECT_NAME_INFORMATION();
-      IntPtr ipObjectName = IntPtr.Zero;
+      IntPtr ipObjectName;
       int nLength = 0;
-      int nReturn = 0;
-      IntPtr ipTemp = IntPtr.Zero;
 
       if (!WinAPI.DuplicateHandle(
               m_ipProcessHwnd,
@@ -470,12 +476,12 @@ namespace Loader
       nLength = objBasic.NameInformationLength;
 
       ipObjectName = Marshal.AllocHGlobal(nLength);
-      while ((uint)(nReturn = WinAPI.NtQueryObject(
+      while ((uint)WinAPI.NtQueryObject(
                ipHandle,
                (int)ObjectInformationClass.ObjectNameInformation,
                ipObjectName,
                nLength,
-               ref nLength)) == STATUS_INFO_LENGTH_MISMATCH)
+               ref nLength) == STATUS_INFO_LENGTH_MISMATCH)
       {
         Marshal.FreeHGlobal(ipObjectName);
         ipObjectName = Marshal.AllocHGlobal(nLength);
@@ -492,25 +498,21 @@ namespace Loader
 
     public static List<SYSTEM_HANDLE_INFORMATION> GetHandles(Process process = null, string IN_strObjectTypeName = null, string IN_strObjectName = null)
     {
-      uint nStatus;
       int nHandleInfoSize = 0x10000;
       IntPtr ipHandlePointer = Marshal.AllocHGlobal(nHandleInfoSize);
       int nLength = 0;
       IntPtr ipHandle = IntPtr.Zero;
 
-      while ((nStatus = WinAPI.NtQuerySystemInformation(
+      while (WinAPI.NtQuerySystemInformation(
                               CNST_SYSTEM_HANDLE_INFORMATION,
                               ipHandlePointer,
                               nHandleInfoSize,
-                              ref nLength)) == STATUS_INFO_LENGTH_MISMATCH)
+                              ref nLength) == STATUS_INFO_LENGTH_MISMATCH)
       {
         nHandleInfoSize = nLength;
         Marshal.FreeHGlobal(ipHandlePointer);
         ipHandlePointer = Marshal.AllocHGlobal(nLength);
       }
-
-      byte[] baTemp = new byte[nLength];
-      Marshal.Copy(ipHandlePointer, baTemp, 0, nLength);
 
       long lHandleCount = 0;
       if (Is64Bits())
@@ -541,10 +543,7 @@ namespace Loader
           shHandle = (SYSTEM_HANDLE_INFORMATION)Marshal.PtrToStructure(ipHandle, shHandle.GetType());
         }
 
-        if (process != null)
-        {
-          if (shHandle.ProcessID != process.Id) continue;
-        }
+        if (process != null && shHandle.ProcessID != process.Id) continue;
 
         string strObjectTypeName = "";
         if (IN_strObjectTypeName != null)
@@ -560,9 +559,6 @@ namespace Loader
           if (strObjectName != IN_strObjectName) continue;
         }
 
-        string strObjectTypeName2 = getObjectTypeName(shHandle, Process.GetProcessById(shHandle.ProcessID));
-        string strObjectName2 = getObjectName(shHandle, Process.GetProcessById(shHandle.ProcessID));
-
         lstHandles.Add(shHandle);
       }
 
@@ -571,7 +567,7 @@ namespace Loader
 
     public static bool Is64Bits()
     {
-      return Marshal.SizeOf(typeof(IntPtr)) == 8 ? true : false;
+      return Marshal.SizeOf(typeof(IntPtr)) == 8;
     }
 
     public static bool KillMutex(Process Proc, string Name)

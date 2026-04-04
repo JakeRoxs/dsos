@@ -16,17 +16,18 @@ namespace Loader
       try
       {
         IPAddress[] Addresses = Dns.GetHostAddresses(Hostname);
-        foreach (IPAddress Addr in Addresses)
+        foreach (IPAddress Addr in Addresses.Where(Addr => Addr.AddressFamily == AddressFamily.InterNetwork))
         {
-          if (Addr.AddressFamily == AddressFamily.InterNetwork)
-          {
-            return Addr.ToString();
-          }
+          return Addr.ToString();
         }
       }
-      catch (Exception)
+      catch (SocketException)
       {
-        // Shitty catch all exception ...
+        // DNS lookup failed.
+      }
+      catch (ArgumentException)
+      {
+        // Placeholder catch all exception ...
       }
       return "";
     }
@@ -48,9 +49,17 @@ namespace Loader
           return HostnameToIPv4(Dns.GetHostName());
         }
       }
-      catch (Exception)
+      catch (HttpRequestException)
       {
-        // Shitty catch all exception ...
+        // Failed to retrieve public IP.
+      }
+      catch (TaskCanceledException)
+      {
+        // Request timed out or was cancelled.
+      }
+      catch (SocketException)
+      {
+        // Network lookup failed.
       }
       return "";
     }

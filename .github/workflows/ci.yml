@@ -74,6 +74,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
 
@@ -81,7 +82,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA=${{ github.event.pull_request.base.sha }}
             HEAD_SHA=${{ github.event.pull_request.head.sha }}
-            BRANCH=${{ github.event.pull_request.head.ref }}
+            BRANCH="$PR_HEAD_REF"
 
             # Use just the latest commit delta for the skip decision in PR flows, so non-build tweaks
             # after an earlier full build do not retrigger the entire matrix.

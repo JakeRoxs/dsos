@@ -13,11 +13,11 @@ namespace Loader.Forms
 {
   public partial class CreateServerDialog : Form
   {
-    private List<ServerConfig>? ActiveServers;
+    private readonly List<ServerConfig>? ActiveServers;
     private Task? CreateServerTask = null;
-    private string MachinePublicIp = "";
-    private MainForm? ParentInstance;
-    private GameType ServerGameType;
+    private readonly string MachinePublicIp = "";
+    private readonly MainForm? ParentInstance;
+    private readonly GameType ServerGameType;
 
     public CreateServerDialog(List<ServerConfig> InActiveServers, string InPublicIp, MainForm InParentInstance, GameType InGameType)
     {
@@ -37,15 +37,8 @@ namespace Loader.Forms
       usernameTextBox.Enabled = false;
       passwordTextBox.Enabled = false;
 
-      ServerConfig? ShardServer = null;
-
-      foreach (ServerConfig Config in ActiveServers ?? new List<ServerConfig>())
-      {
-        if (Config.AllowSharding && Config.WebAddress != "" && Config.GameType == ServerGameType.ToString())
-        {
-          ShardServer = Config;
-        }
-      }
+      ServerConfig? ShardServer = (ActiveServers ?? new List<ServerConfig>())
+          .FirstOrDefault(Config => Config.AllowSharding && Config.WebAddress != "" && Config.GameType == ServerGameType.ToString());
 
       if (ShardServer == null)
       {
@@ -56,7 +49,7 @@ namespace Loader.Forms
         return;
       }
 
-      string Name = usernameTextBox.Text;
+      string Username = usernameTextBox.Text;
       string Password = passwordTextBox.Text;
 
       CreateServerTask = Task.Run(() =>
@@ -69,7 +62,7 @@ namespace Loader.Forms
           Address = Address.Replace("/" + MachinePublicIp + ":", "/127.0.0.1:");
         }
 
-        WebUiApi.CreateServerResponse result = WebUiApi.CreateServer(Address, Name, Password, ServerGameType.ToString());
+        WebUiApi.CreateServerResponse result = WebUiApi.CreateServer(Address, Username, Password, ServerGameType.ToString());
         this.Invoke((MethodInvoker)delegate
         {
           ProcessResult(result);

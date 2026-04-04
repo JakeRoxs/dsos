@@ -51,7 +51,7 @@ namespace Loader
       BasePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\DarkSoulsII";
       FilesCopied += CopySavesInDirectory(BasePath);
 
-      MessageBox.Show("Copied " + FilesCopied.ToString() + " retail saves to Rekindled Server.");
+      MessageBox.Show("Copied " + FilesCopied + " retail saves to Rekindled Server.");
     }
 
     private int CopySavesInDirectory(string BasePath)

@@ -49,9 +49,8 @@ namespace Loader
 
       // Turbo-shit parsing. Lets just pretend you didn't see any of this ...
       string[] Lines = File.ReadAllLines(ConfigVdfPath);
-      foreach (string Line in Lines)
+      foreach (string Trimmed in Lines.Select(Line => Line.Trim()))
       {
-        string Trimmed = Line.Trim();
         if (!Trimmed.StartsWith("\""))
         {
           continue;

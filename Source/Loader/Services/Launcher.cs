@@ -35,14 +35,7 @@ namespace Loader.Services
 
       if (hostnameIp == machinePublicIp)
       {
-        if (privateHostnameIp == machinePrivateIp)
-        {
-          connectionHostname = "127.0.0.1";
-        }
-        else
-        {
-          connectionHostname = config.PrivateHostname;
-        }
+        connectionHostname = privateHostnameIp == machinePrivateIp ? "127.0.0.1" : config.PrivateHostname;
       }
 
       return connectionHostname;
@@ -56,12 +49,15 @@ namespace Loader.Services
         return false;
       }
 
+#if DEBUG
+      // Debug-only cleanup for a previously tracked running process.
+      // Only attempt to clear named mutexes when we still have a valid handle,
+      // since this is intended as a development-time workaround for stale mutex state.
       if (RunningProcessHandle != IntPtr.Zero)
       {
-#if DEBUG
         KillNamedMutexIfExists();
-#endif
       }
+#endif
 
       string connectionHostname = ResolveConnectIp(config, machinePublicIp, machinePrivateIp);
 
@@ -72,7 +68,7 @@ namespace Loader.Services
       }
 
       string exeDirectory = Path.GetDirectoryName(exeLocation) ?? string.Empty;
-      string appIdFile = Path.Combine(exeDirectory, "steam_appid.txt");
+      string appIdFile = Path.Join(exeDirectory, "steam_appid.txt");
       File.WriteAllText(appIdFile, loadConfig.SteamAppId.ToString());
 
       STARTUPINFO startupInfo = new STARTUPINFO();
@@ -127,8 +123,8 @@ namespace Loader.Services
     private bool TryRunInjector(ServerConfig config, string connectionHostname, bool useSeparateSaveFiles, PROCESS_INFORMATION processInfo, out string? errorMessage)
     {
       string? directoryPath = Path.GetDirectoryName(Application.ExecutablePath);
-      string injectorPath = Path.Combine(directoryPath ?? string.Empty, "Injector.dll");
-      string injectorConfigPath = Path.Combine(directoryPath ?? string.Empty, "Injector.config");
+      string injectorPath = Path.Join(directoryPath ?? string.Empty, "Injector.dll");
+      string injectorConfigPath = Path.Join(directoryPath ?? string.Empty, "Injector.config");
 
       while (!File.Exists(injectorPath))
       {
@@ -139,8 +135,8 @@ namespace Loader.Services
           return false;
         }
 
-        injectorPath = Path.Combine(directoryPath, "Injector.dll");
-        injectorConfigPath = Path.Combine(directoryPath, "Injector.config");
+        injectorPath = Path.Join(directoryPath, "Injector.dll");
+        injectorConfigPath = Path.Join(directoryPath, "Injector.config");
       }
 
       var injectConfig = new InjectionConfig

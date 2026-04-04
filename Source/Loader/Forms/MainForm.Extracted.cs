@@ -133,14 +133,9 @@ namespace Loader
 
     private async void OnSelectedServerChanged(object sender, EventArgs e)
     {
-      if (ImportedServerListView.SelectedItems.Count > 0)
-      {
-        CurrentServerConfig = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id);
-      }
-      else
-      {
-        CurrentServerConfig = null;
-      }
+      CurrentServerConfig = ImportedServerListView.SelectedItems.Count > 0
+          ? GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id)
+          : null;
 
       ValidateUI();
 
@@ -298,12 +293,11 @@ namespace Loader
     private void OnContinualUpdateTimer(object sender, EventArgs e)
     {
       uint ExitCode = 0;
-      if (launcher.RunningProcessHandle != IntPtr.Zero)
+      if (launcher.RunningProcessHandle != IntPtr.Zero
+          && (!WinAPI.GetExitCodeProcess(launcher.RunningProcessHandle, out ExitCode)
+              || ExitCode != (uint)ProcessExitCodes.STILL_ACTIVE))
       {
-        if (!WinAPI.GetExitCodeProcess(launcher.RunningProcessHandle, out ExitCode) || ExitCode != (uint)ProcessExitCodes.STILL_ACTIVE)
-        {
-          launcher.ClearProcess();
-        }
+        launcher.ClearProcess();
       }
 
       ValidateUI();

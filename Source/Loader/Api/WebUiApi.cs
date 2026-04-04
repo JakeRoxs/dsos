@@ -62,10 +62,10 @@ namespace Loader
 
       try
       {
-        HttpRequestMessage Request = new HttpRequestMessage(Method, Uri);
+        using HttpRequestMessage Request = new HttpRequestMessage(Method, Uri);
         Request.Content = Content;
 
-        HttpResponseMessage Response = Client.Send(Request);
+        using HttpResponseMessage Response = Client.Send(Request);
         if (!Response.IsSuccessStatusCode)
         {
           Debug.WriteLine("Got error status when trying to query hub server: {0}", Response.StatusCode);
@@ -83,7 +83,23 @@ namespace Loader
 
         Result = ResponseTask.Result;
       }
-      catch (Exception Ex)
+      catch (HttpRequestException Ex)
+      {
+        Debug.WriteLine("Received HTTP exception when trying to get servers: {0}", Ex.Message);
+      }
+      catch (TaskCanceledException Ex)
+      {
+        Debug.WriteLine("Received timeout/cancellation when trying to get servers: {0}", Ex.Message);
+      }
+      catch (NotSupportedException Ex)
+      {
+        Debug.WriteLine("Received unsupported-content exception when trying to get servers: {0}", Ex.Message);
+      }
+      catch (System.Text.Json.JsonException Ex)
+      {
+        Debug.WriteLine("Received JSON exception when trying to get servers: {0}", Ex.Message);
+      }
+      catch (InvalidOperationException Ex)
       {
         Debug.WriteLine("Received exception when trying to get servers: {0}", Ex.Message);
       }
