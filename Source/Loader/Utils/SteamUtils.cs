@@ -35,7 +35,7 @@ namespace Loader
       }
 
       int indexKeyStart = 0;
-      int indexKeyEnd = trimmed.IndexOf("\"", indexKeyStart + 1);
+      int indexKeyEnd = trimmed.IndexOf('"', indexKeyStart + 1);
       if (indexKeyEnd == -1)
       {
         return false;
@@ -47,13 +47,13 @@ namespace Loader
         return false;
       }
 
-      int indexValueStart = trimmed.IndexOf("\"", indexKeyEnd + 1);
+      int indexValueStart = trimmed.IndexOf('"', indexKeyEnd + 1);
       if (indexValueStart == -1)
       {
         return false;
       }
 
-      int indexValueEnd = trimmed.IndexOf("\"", indexValueStart + 1);
+      int indexValueEnd = trimmed.IndexOf('"', indexValueStart + 1);
       if (indexValueEnd == -1)
       {
         return false;
@@ -71,14 +71,6 @@ namespace Loader
       {
         return "";
       }
-
-      /*
-      string PotentialPath = SteamPath + @"\steamapps\common\" + FolderName;
-      if (Directory.Exists(PotentialPath))
-      {
-          return PotentialPath;
-      }
-      */
 
       string ConfigVdfPath = SteamPath + @"\steamapps\LibraryFolders.vdf";
       if (!File.Exists(ConfigVdfPath))
@@ -113,11 +105,11 @@ namespace Loader
       }
       object? ActiveUserValue = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam\ActiveProcess", "ActiveUser", 0);
       object? ActivePidValue = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam\ActiveProcess", "pid", 0);
-      if (ActiveUserValue == null || ActiveUserValue is not int)
+      if (ActiveUserValue is not int)
       {
         return false;
       }
-      if (ActivePidValue == null || ActivePidValue is not int)
+      if (ActivePidValue is not int)
       {
         return false;
       }
