@@ -34,7 +34,7 @@ RUN if [ ! -d /build/bin/x64_release ]; then \
       echo "Error: canonical build output directory /build/bin/x64_release not found"; exit 1; \
     fi
 
-FROM steamcmd/steamcmd:latest@sha256:be35dd8774c811d2167ae82b220aaca7a3861ca83a5872a1cc503b71eacc4a45 AS steam
+FROM steamcmd/steamcmd:latest@sha256:fcdf958999850428412dcd5a9770f73a512f43921c65ff9cae44e0a6dbabd66a AS steam
 
 # Make steamcmd download steam client libraries so we can copy them later.
 RUN steamcmd +login anonymous +quit
