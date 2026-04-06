@@ -19,7 +19,7 @@ namespace Loader.Services
       HidePassworded = ProgramSettings.Default.hide_passworded;
       MinimumPlayers = ProgramSettings.Default.minimum_players;
       ServerConfigJson = ProgramSettings.Default.server_config_json;
-      UseSeparateSaves = ProgramSettings.Default.use_seperate_saves;
+      UseSeparateSaves = ProgramSettings.Default.use_separate_saves;
 
       if (ServerConfigList.FromJson(ServerConfigJson, out var serverList))
       {
@@ -58,7 +58,7 @@ namespace Loader.Services
       HidePassworded = hidePassworded;
       ProgramSettings.Default.minimum_players = minimumPlayers;
       MinimumPlayers = minimumPlayers;
-      ProgramSettings.Default.use_seperate_saves = UseSeparateSaves;
+      ProgramSettings.Default.use_separate_saves = UseSeparateSaves;
       ProgramSettings.Default.Save();
     }
   }

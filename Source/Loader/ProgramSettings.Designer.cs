@@ -74,12 +74,12 @@ namespace Loader {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool use_seperate_saves {
+        public bool use_separate_saves {
             get {
-                return ((bool)(this["use_seperate_saves"]));
+                return ((bool)(this["use_separate_saves"]));
             }
             set {
-                this["use_seperate_saves"] = value;
+                this["use_separate_saves"] = value;
             }
         }
         

@@ -7,6 +7,7 @@
 add_subdirectory(ThirdParty)
 
     if (WIN32)
+        add_subdirectory(Loader.Avalonia)
         add_subdirectory(Loader)
             add_subdirectory(Injector)
                 endif()

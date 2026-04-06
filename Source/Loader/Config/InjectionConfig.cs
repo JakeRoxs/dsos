@@ -28,7 +28,7 @@ namespace Loader
     public string ServerPublicKey { get; set; } = string.Empty;
     public string ServerGameType { get; set; } = string.Empty;
     public int ServerPort { get; set; }
-    public bool EnableSeperateSaveFiles { get; set; }
+    public bool EnableSeparateSaveFiles { get; set; }
 
     public string ToJson()
     {

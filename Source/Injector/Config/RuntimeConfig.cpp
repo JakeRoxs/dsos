@@ -129,7 +129,7 @@ bool RuntimeConfig::Serialize(nlohmann::json& Json, bool Loading) {
   SERIALIZE_VAR(ServerName);
   SERIALIZE_VAR(ServerHostname);
   SERIALIZE_VAR(ServerPublicKey);
-  SERIALIZE_VAR(EnableSeperateSaveFiles);
+  SERIALIZE_VAR(EnableSeparateSaveFiles);
   SERIALIZE_VAR(ServerPort);
   SERIALIZE_VAR(ServerGameType);
 

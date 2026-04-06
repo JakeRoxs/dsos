@@ -271,7 +271,7 @@ namespace Loader
 
     void PerformLaunch(ServerConfig Config)
     {
-      if (!launcher.PerformLaunch(Config, ExeLocationTextBox.Text, MachinePublicIp, MachinePrivateIp, ProgramSettings.Default.use_seperate_saves, out var errorKey))
+      if (!launcher.PerformLaunch(Config, ExeLocationTextBox.Text, MachinePublicIp, MachinePrivateIp, ProgramSettings.Default.use_separate_saves, out var errorKey))
       {
         if (!string.IsNullOrEmpty(errorKey))
         {

@@ -172,7 +172,7 @@ bool Injector::Init(const std::filesystem::path& configPathOverride) {
     Hooks.AddHook(std::make_unique<ReplaceServerPortHook>());
   }
 
-  if (Config.EnableSeperateSaveFiles) {
+  if (Config.EnableSeparateSaveFiles) {
     if (!BuildConfig::DO_NOT_REDIRECT) {
       Hooks.AddHook(std::make_unique<ChangeSaveGameFilenameHook>());
     }

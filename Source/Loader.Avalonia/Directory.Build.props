@@ -1,0 +1,9 @@
+<Project>
+  <PropertyGroup>
+    <RepoRoot Condition="'$(SolutionDir)' == ''">$(MSBuildProjectDirectory)\..\..</RepoRoot>
+    <RepoRoot Condition="'$(SolutionDir)' != ''">$(SolutionDir)\..</RepoRoot>
+
+    <BaseIntermediateOutputPath>$(RepoRoot)\Intermediate\$(Platform)_$(Configuration)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(RepoRoot)\Bin\$(Platform)_$(Configuration)\</BaseOutputPath>
+  </PropertyGroup>
+</Project>

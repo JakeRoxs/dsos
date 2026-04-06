@@ -146,7 +146,7 @@ namespace Loader.Services
         ServerHostname = connectionHostname,
         ServerPort = config.Port,
         ServerGameType = config.GameType,
-        EnableSeperateSaveFiles = useSeparateSaveFiles
+        EnableSeparateSaveFiles = useSeparateSaveFiles
       };
 
       File.WriteAllText(injectorConfigPath, injectConfig.ToJson());

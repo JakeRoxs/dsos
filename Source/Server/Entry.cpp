@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
     SteamUtils()->SetWarningMessageHook(&SteamWarningHook);
   }
 
-  // TODO: Split this out into a seperate application.
+  // TODO: Split this out into a separate application.
   // TODO: Also do less crappy arg parsing.
   if (start_as_client_emulator) {
     std::array<std::thread, BuildConfig::CLIENT_EMULATOR_COUNT> ClientThreads;
