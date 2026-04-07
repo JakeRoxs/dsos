@@ -13,7 +13,12 @@ on:
         default: "main"
 
 permissions:
+  contents: read
   pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
@@ -33,7 +38,23 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-sonarqube-${{ hashFiles('Source/Loader/**/*.csproj', 'Source/Loader.Avalonia/**/*.csproj', '**/Directory.Packages.props', '**/global.json', '**/nuget.config') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-sonarqube-
+
+      - name: Cache SonarQube scanner plugins
+        uses: actions/cache@v5
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar-plugin-cache-loader-v1
+          restore-keys: |
+            ${{ runner.os }}-sonar-plugin-cache-loader-
 
       - name: Validate SonarQube settings
         shell: bash
@@ -46,6 +67,7 @@ jobs:
         run: |
           dotnet restore Source/Loader/Loader.csproj -p:EnableWindowsTargeting=true
           dotnet restore Source/Loader/Tests/Loader.Tests.csproj -p:EnableWindowsTargeting=true
+          dotnet restore Source/Loader.Avalonia/Loader.Avalonia.csproj
 
       - name: Install SonarScanner for .NET
         run: |
@@ -62,9 +84,22 @@ jobs:
             /d:sonar.exclusions="Source/ThirdParty/**,Protobuf/**,build/**" \
             /d:sonar.sourceEncoding="UTF-8" \
             /d:sonar.qualitygate.wait="true"
-          dotnet build Source/Loader/Loader.csproj --configuration Release -p:EnableWindowsTargeting=true
-          dotnet build Source/Loader/Tests/Loader.Tests.csproj --configuration Release -p:EnableWindowsTargeting=true
-          dotnet test Source/Loader/Tests/Loader.Tests.csproj --configuration Release --no-build -p:EnableWindowsTargeting=true
+          dotnet build Source/Loader/Loader.csproj --configuration Release --no-restore -p:EnableWindowsTargeting=true
+          dotnet build Source/Loader/Tests/Loader.Tests.csproj --configuration Release --no-restore -p:EnableWindowsTargeting=true
+          dotnet test Source/Loader/Tests/Loader.Tests.csproj --configuration Release --no-build --no-restore -p:EnableWindowsTargeting=true
+          dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
+
+      - name: Run SonarScanner (Loader Avalonia C#)
+        run: |
+          dotnet sonarscanner begin \
+            /k:"$SONAR_LOADER_PROJECT_KEY" \
+            /n:"rekindled-server-loader-avalonia" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.login="$SONAR_TOKEN" \
+            /d:sonar.exclusions="Source/ThirdParty/**,Protobuf/**,build/**" \
+            /d:sonar.sourceEncoding="UTF-8" \
+            /d:sonar.qualitygate.wait="true"
+          dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
           dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
 
   sonar-server:
@@ -91,7 +126,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.sonar/cache
-          key: sonar-plugin-cache-${{ runner.os }}
+          key: sonar-plugin-cache-${{ runner.os }}-v1
           restore-keys: sonar-plugin-cache-${{ runner.os }}-
 
       - name: Configure CMake (generates compile_commands.json)
