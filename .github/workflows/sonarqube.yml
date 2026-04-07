@@ -96,7 +96,7 @@ jobs:
         continue-on-error: true
         run: |
           dotnet sonarscanner begin \
-            /k:"$SONAR_LOADER_PROJECT_KEY" \
+            /k:"$SONAR_LOADER_AVALONIA_PROJECT_KEY" \
             /n:"rekindled-server-loader-avalonia" \
             /d:sonar.host.url="$SONAR_HOST_URL" \
             /d:sonar.login="$SONAR_TOKEN" \
