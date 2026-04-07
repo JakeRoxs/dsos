@@ -75,6 +75,8 @@ jobs:
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
       - name: Run SonarScanner (Loader C#)
+        id: scan_loader
+        continue-on-error: true
         run: |
           dotnet sonarscanner begin \
             /k:"$SONAR_LOADER_PROJECT_KEY" \
@@ -90,6 +92,8 @@ jobs:
           dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
 
       - name: Run SonarScanner (Loader Avalonia C#)
+        id: scan_loader_avalonia
+        continue-on-error: true
         run: |
           dotnet sonarscanner begin \
             /k:"$SONAR_LOADER_PROJECT_KEY" \
@@ -101,6 +105,17 @@ jobs:
             /d:sonar.qualitygate.wait="true"
           dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
           dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
+
+      - name: Fail job if any Loader Sonar scan failed
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.scan_loader.outcome }}" != "success" || "${{ steps.scan_loader_avalonia.outcome }}" != "success" ]]; then
+            echo "One or more Loader Sonar scans failed (or quality gate failed)."
+            echo "scan_loader outcome: ${{ steps.scan_loader.outcome }}"
+            echo "scan_loader_avalonia outcome: ${{ steps.scan_loader_avalonia.outcome }}"
+            exit 1
+          fi
 
   sonar-server:
     name: SonarQube Server (C++)
