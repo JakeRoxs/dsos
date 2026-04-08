@@ -203,6 +203,11 @@ function safeLogValue(value, maxLength = 256) {
   return JSON.stringify(sanitizeForLog(value, maxLength));
 }
 
+function safeLogErrorMessage(error, maxLength = 512) {
+  const message = error instanceof Error ? error.message : String(error);
+  return JSON.stringify(sanitizeForLog(message, maxLength));
+}
+
 function validatePublicKey(value) {
   let key = String(value ?? "").trim();
   if (key.length === 0 || key.length > 4096) {
@@ -263,9 +268,11 @@ function validateWebAddress(value) {
     parsed.password = "";
     return parsed.toString();
   } catch (err) {
-    const safeUrl = sanitizeForLog(url, 256);
-    const safeError = sanitizeForLog(err?.message ?? String(err), 512);
-    console.warn(`Invalid WebAddress provided: ${safeUrl} | ${safeError}`);
+    const safeUrl = safeLogValue(url, 256);
+    const safeError = safeLogErrorMessage(err, 512);
+    console.warn(
+      `Invalid WebAddress provided during validation. url=${safeUrl} error=${safeError}`,
+    );
     return "";
   }
 }
@@ -496,8 +503,8 @@ function removeTimedOutServers() {
 
   for (const [id, server] of activeServers.entries()) {
     if (server.UpdatedTime < timeoutThreshold) {
-      const safeId = sanitizeForLog(id, 128);
-      const safeIpAddress = sanitizeForLog(server.IpAddress, 128);
+      const safeId = safeLogValue(id, 128);
+      const safeIpAddress = safeLogValue(server.IpAddress, 128);
       console.log(
         `Removing server that timed out: id=${safeId} ip=${safeIpAddress}`,
       );
