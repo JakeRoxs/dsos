@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Loader
@@ -12,6 +10,7 @@ namespace Loader
   public static class NetUtils
   {
     private static readonly string DefaultPublicIpServiceUrl = $"{Uri.UriSchemeHttps}://api.ipify.org";
+    private static readonly HttpClient PublicIpClient = new HttpClient();
 
     private static string ResolvePublicIpServiceUrl()
     {
@@ -48,11 +47,8 @@ namespace Loader
       {
         if (GetPublicAddress)
         {
-          using (HttpClient client = new HttpClient())
-          {
-            // synchronous call for simplicity
-            return client.GetStringAsync(ResolvePublicIpServiceUrl()).GetAwaiter().GetResult();
-          }
+          // synchronous call for simplicity
+          return PublicIpClient.GetStringAsync(ResolvePublicIpServiceUrl()).GetAwaiter().GetResult();
         }
         else
         {
