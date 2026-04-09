@@ -118,7 +118,7 @@ namespace Loader
       }
 
       string exeDirectory = _platformServices.GetDirectoryName(exePath) ?? string.Empty;
-      string appIdPath = Path.Combine(exeDirectory, "steam_appid.txt");
+      string appIdPath = CombinePathPreservingSeparator(exeDirectory, "steam_appid.txt");
 
       try
       {
@@ -210,7 +210,7 @@ namespace Loader
       string machinePublicIp = _platformServices.GetMachineIPv4(true);
 
       string resolvedHost = ResolveConnectIp(server, machinePublicIp, machinePrivateIp);
-      string appIdPath = Path.Combine(_platformServices.GetDirectoryName(exePath) ?? string.Empty, "steam_appid.txt");
+      string appIdPath = CombinePathPreservingSeparator(_platformServices.GetDirectoryName(exePath) ?? string.Empty, "steam_appid.txt");
 
       StringBuilder summary = new StringBuilder();
       summary.AppendLine($"Server: {server.Name}");
@@ -259,6 +259,21 @@ namespace Loader
       }
 
       return connectionHostname;
+    }
+
+    private static string CombinePathPreservingSeparator(string directory, string fileName)
+    {
+      if (string.IsNullOrEmpty(directory))
+      {
+        return fileName;
+      }
+
+      if (directory.Contains('\\'))
+      {
+        return directory.EndsWith("\\") ? directory + fileName : directory + "\\" + fileName;
+      }
+
+      return Path.Combine(directory, fileName);
     }
   }
 }
