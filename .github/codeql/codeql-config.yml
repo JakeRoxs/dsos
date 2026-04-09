@@ -6,11 +6,17 @@ queries:
 # Exclude generated/build artifacts from analysis scope.
 paths-ignore:
   - "intermediate/**"
+  - "**/_deps/**"
   - "**/CMakeFiles/CMakeScratch/**"
-
-  # Generated dependency/build trees (not maintained as first-party source).
-  - "intermediate/make/_deps/**"
 
   # Vendored third-party sources with known legacy style violations.
   - "Source/ThirdParty/protobuf-2.6.1rc1/**"
   - "Source/ThirdParty/steam/tools/codesigning/**"
+
+# Loader intentionally uses Win32 process/memory APIs for DLL injection into the
+# game process. These two queries currently generate noise for required behavior.
+query-filters:
+  - exclude:
+      id: cs/unmanaged-code
+  - exclude:
+      id: cs/call-to-unmanaged-code
