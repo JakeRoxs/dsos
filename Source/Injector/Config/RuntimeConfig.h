@@ -32,8 +32,8 @@ public:
   // Login port to connect to on server.
   int ServerPort = 50050;
 
-  // If we should use seperate saves from the retail ones.
-  bool EnableSeperateSaveFiles = true;
+  // If we should use separate saves from the retail ones.
+  bool EnableSeparateSaveFiles = true;
 
   // Name of the configuration file used by the injector.
   static constexpr const char* ConfigFileName = "Injector.config";

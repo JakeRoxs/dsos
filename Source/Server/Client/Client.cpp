@@ -100,7 +100,7 @@ bool Client::Init() {
     // LogS(GetName().c_str(), "Requesting auth session ticket ...");
     AppTicket.resize(2048);
     uint32 TicketLength = 0;
-    AppTicketHandle = SteamUser()->GetAuthSessionTicket(AppTicket.data(), (int)AppTicket.size(), &TicketLength);
+    AppTicketHandle = SteamUser()->GetAuthSessionTicket(AppTicket.data(), (int)AppTicket.size(), &TicketLength, nullptr);
 
     if (AppTicketHandle != k_HAuthTicketInvalid) {
       AppTicket.resize(TicketLength);

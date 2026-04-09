@@ -1,4 +1,4 @@
-﻿
+
 namespace Loader.Forms
 {
     partial class ServerLoginDetailsDialog
@@ -6,7 +6,7 @@ namespace Loader.Forms
         /// <summary>
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private readonly System.ComponentModel.IContainer components = null;
 
         /// <summary>
         /// Clean up any resources being used.

@@ -42,10 +42,10 @@ namespace Loader
 
     private bool IgnoreInputChanges = false;
 
-    private string MachinePrivateIp = "";
-    private string MachinePublicIp = "";
+    private readonly string MachinePrivateIp = "";
+    private readonly string MachinePublicIp = "";
 
-    private string[] ColumnNames = { "Server Name", "Player Count", "Description" };
+    private readonly string[] ColumnNames = { "Server Name", "Player Count", "Description" };
 
     public static string OfficialServer = NetUtils.HostnameToIPv4("rekindled.jakesws.xyz");
 
@@ -78,6 +78,8 @@ namespace Loader
     {
       queryService.Cancel();
       _updateServerIpCts?.Cancel();
+      _updateServerIpCts?.Dispose();
+      _updateServerIpCts = null;
     }
 
 

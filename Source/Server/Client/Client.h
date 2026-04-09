@@ -30,7 +30,7 @@
 // This is a very-very-very simple client emulator. Its used to
 // as a super simple way to server behaviour.
 //
-// TODO: Split this out into a seperate application.
+// TODO: Split this out into a separate application.
 
 class NetConnection;
 class Frpg2MessageStream;

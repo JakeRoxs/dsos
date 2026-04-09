@@ -12,13 +12,14 @@
 #include <vector>
 #include "GameEngine.h"
 #include "SpaceWar.h"
-#include "BaseMenu.h"
+#include "BaseMenu.h" 
 #include "SpaceWarClient.h"
 
-class CQuitMenu : public CBaseMenu<EClientGameState> {
+class CQuitMenu : public CBaseMenu<EClientGameState>
+{
 public:
-  // Constructor
-  CQuitMenu(IGameEngine* pGameEngine);
+	// Constructor
+	CQuitMenu( IGameEngine *pGameEngine );
 };
 
 #endif // QUITMENU_H

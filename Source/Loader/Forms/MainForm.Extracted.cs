@@ -58,11 +58,11 @@ namespace Loader
         LaunchButton.Text = resources.GetString("not_logged_into_steam");
       }
 #if RELEASE
-            else if (launcher.RunningProcessHandle != IntPtr.Zero)
-            {
-                LaunchEnabled = false;
-                LaunchButton.Text = resources.GetString("running");
-            }
+      else if (IsLaunchedProcessRunning())
+      {
+        LaunchEnabled = false;
+        LaunchButton.Text = resources.GetString("running");
+      }
 #endif
       else
       {
@@ -133,18 +133,14 @@ namespace Loader
 
     private async void OnSelectedServerChanged(object sender, EventArgs e)
     {
-      if (ImportedServerListView.SelectedItems.Count > 0)
-      {
-        CurrentServerConfig = GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id);
-      }
-      else
-      {
-        CurrentServerConfig = null;
-      }
+      CurrentServerConfig = ImportedServerListView.SelectedItems.Count > 0
+          ? GetConfigFromId((ImportedServerListView.SelectedItems[0].Tag as ServerConfig)!.Id)
+          : null;
 
       ValidateUI();
 
       _updateServerIpCts?.Cancel();
+      _updateServerIpCts?.Dispose();
       _updateServerIpCts = new CancellationTokenSource();
 
       if (CurrentServerConfig != null)
@@ -204,7 +200,7 @@ namespace Loader
 
     protected virtual Task<List<ServerConfig>> QueryServersFromHubAsync(CancellationToken cancellationToken)
     {
-      // HubApi.ListServers can return null on failure.
+      // HubApi.ListServers now returns an empty list on failure instead of null.
       return Task.Run(() => HubApi.ListServers(), cancellationToken);
     }
 
@@ -275,7 +271,7 @@ namespace Loader
 
     void PerformLaunch(ServerConfig Config)
     {
-      if (!launcher.PerformLaunch(Config, ExeLocationTextBox.Text, MachinePublicIp, MachinePrivateIp, ProgramSettings.Default.use_seperate_saves, out var errorKey))
+      if (!launcher.PerformLaunch(Config, ExeLocationTextBox.Text, MachinePublicIp, MachinePrivateIp, ProgramSettings.Default.use_separate_saves, out var errorKey))
       {
         if (!string.IsNullOrEmpty(errorKey))
         {
@@ -295,15 +291,16 @@ namespace Loader
       ValidateUI();
     }
 
+    private bool IsLaunchedProcessRunning()
+    {
+      return launcher.IsProcessRunning();
+    }
+
     private void OnContinualUpdateTimer(object sender, EventArgs e)
     {
-      uint ExitCode = 0;
-      if (launcher.RunningProcessHandle != IntPtr.Zero)
+      if (!IsLaunchedProcessRunning())
       {
-        if (!WinAPI.GetExitCodeProcess(launcher.RunningProcessHandle, out ExitCode) || ExitCode != (uint)ProcessExitCodes.STILL_ACTIVE)
-        {
-          launcher.ClearProcess();
-        }
+        launcher.ClearProcess();
       }
 
       ValidateUI();

@@ -13,7 +13,7 @@ namespace Loader.Forms
 {
   public partial class PasswordDialog : Form
   {
-    private ServerConfig? Config;
+    private readonly ServerConfig? Config;
     private Task? GetPublicKeyTask = null;
 
     public PasswordDialog(ServerConfig InConfig)

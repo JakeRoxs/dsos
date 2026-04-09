@@ -1,0 +1,16 @@
+name: "Repository CodeQL Configuration"
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+# Exclude generated/build artifacts from analysis scope.
+paths-ignore:
+  - "intermediate/**"
+  - "**/CMakeFiles/CMakeScratch/**"
+
+  # Generated dependency/build trees (not maintained as first-party source).
+  - "intermediate/make/_deps/**"
+
+  # Vendored third-party sources with known legacy style violations.
+  - "Source/ThirdParty/protobuf-2.6.1rc1/**"
+  - "Source/ThirdParty/steam/tools/codesigning/**"

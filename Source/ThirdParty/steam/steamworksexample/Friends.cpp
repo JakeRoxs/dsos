@@ -11,136 +11,158 @@
 #include <vector>
 #include <algorithm>
 
+
 //-----------------------------------------------------------------------------
 // Purpose: Menu that shows your friends
 //-----------------------------------------------------------------------------
-class CFriendsListMenu : public CBaseMenu<FriendsListMenuItem_t> {
-  static const FriendsListMenuItem_t k_menuItemEmpty;
+class CFriendsListMenu : public CBaseMenu<FriendsListMenuItem_t>
+{
+	static const FriendsListMenuItem_t k_menuItemEmpty;
 
 public:
-  //-----------------------------------------------------------------------------
-  // Purpose: Constructor
-  //-----------------------------------------------------------------------------
-  CFriendsListMenu(IGameEngine* pGameEngine) : CBaseMenu<FriendsListMenuItem_t>(pGameEngine) {
-  }
 
-  //-----------------------------------------------------------------------------
-  // Purpose: Creates friends list menu
-  //-----------------------------------------------------------------------------
-  void Rebuild() {
-    PushSelectedItem();
-    ClearMenuItems();
+	//-----------------------------------------------------------------------------
+	// Purpose: Constructor
+	//-----------------------------------------------------------------------------
+	CFriendsListMenu( IGameEngine *pGameEngine ) : CBaseMenu<FriendsListMenuItem_t>( pGameEngine )
+	{
+		
+	}
 
-    AddMenuItem(CFriendsListMenu::MenuItem_t("Friends List", k_menuItemEmpty));
+	//-----------------------------------------------------------------------------
+	// Purpose: Creates friends list menu
+	//-----------------------------------------------------------------------------
+	void Rebuild()
+	{
+		PushSelectedItem();
+		ClearMenuItems();
 
-    // First add pending incoming requests
-    AddFriendsByFlag(k_EFriendFlagFriendshipRequested, "Incoming Friend Requests");
+		AddMenuItem( CFriendsListMenu::MenuItem_t( "Friends List", k_menuItemEmpty ) );
 
-    // Add each Tag group and record the users with tags
-    std::vector<CSteamID> vecTaggedSteamIDs;
-    int nFriendsGroups = SteamFriends()->GetFriendsGroupCount();
-    for (int iFG = 0; iFG < nFriendsGroups; iFG++) {
-      FriendsGroupID_t friendsGroupID = SteamFriends()->GetFriendsGroupIDByIndex(iFG);
-      if (friendsGroupID == k_FriendsGroupID_Invalid)
-        continue;
+		// First add pending incoming requests
+		AddFriendsByFlag( k_EFriendFlagFriendshipRequested, "Incoming Friend Requests" );
 
-      int nFriendsGroupMemberCount = SteamFriends()->GetFriendsGroupMembersCount(friendsGroupID);
-      if (!nFriendsGroupMemberCount)
-        continue;
+		// Add each Tag group and record the users with tags
+		std::vector<CSteamID> vecTaggedSteamIDs;
+		int nFriendsGroups = SteamFriends()->GetFriendsGroupCount();
+		for ( int iFG = 0; iFG < nFriendsGroups; iFG++ )
+		{
+			FriendsGroupID_t friendsGroupID = SteamFriends()->GetFriendsGroupIDByIndex( iFG );
+			if ( friendsGroupID == k_FriendsGroupID_Invalid )
+				continue;
 
-      const char* pszFriendsGroupName = SteamFriends()->GetFriendsGroupName(friendsGroupID);
-      if (pszFriendsGroupName == NULL)
-        pszFriendsGroupName = "";
-      AddMenuItem(CFriendsListMenu::MenuItem_t("", k_menuItemEmpty));
-      AddMenuItem(CFriendsListMenu::MenuItem_t(pszFriendsGroupName, k_menuItemEmpty));
+			int nFriendsGroupMemberCount = SteamFriends()->GetFriendsGroupMembersCount( friendsGroupID );
+			if ( !nFriendsGroupMemberCount )
+				continue;
 
-      std::vector<CSteamID> vecSteamIDMembers(nFriendsGroupMemberCount);
-      SteamFriends()->GetFriendsGroupMembersList(friendsGroupID, &vecSteamIDMembers[0], nFriendsGroupMemberCount);
-      for (int iMember = 0; iMember < nFriendsGroupMemberCount; iMember++) {
-        const CSteamID& steamIDMember = vecSteamIDMembers[iMember];
-        AddFriendToMenu(steamIDMember);
-        vecTaggedSteamIDs.push_back(steamIDMember);
-      }
-    }
+			const char *pszFriendsGroupName = SteamFriends()->GetFriendsGroupName( friendsGroupID );
+			if ( pszFriendsGroupName == NULL )
+				pszFriendsGroupName = "";
+			AddMenuItem( CFriendsListMenu::MenuItem_t( "", k_menuItemEmpty ) );
+			AddMenuItem( CFriendsListMenu::MenuItem_t( pszFriendsGroupName, k_menuItemEmpty ) );
 
-    // Add the "normal" Friends category, filtering out the ones with tags
-    AddFriendsByFlag(k_EFriendFlagImmediate, "Friends", &vecTaggedSteamIDs);
+			std::vector<CSteamID> vecSteamIDMembers( nFriendsGroupMemberCount );
+			SteamFriends()->GetFriendsGroupMembersList( friendsGroupID, &vecSteamIDMembers[0], nFriendsGroupMemberCount );
+			for ( int iMember = 0; iMember < nFriendsGroupMemberCount; iMember++ )
+			{
+				const CSteamID &steamIDMember = vecSteamIDMembers[iMember];
+				AddFriendToMenu( steamIDMember );
+				vecTaggedSteamIDs.push_back( steamIDMember );
+			}
+		}
 
-    // Finally add the pending outgoing requests
-    AddFriendsByFlag(k_EFriendFlagRequestingFriendship, "Outgoing Friend Requests");
+		// Add the "normal" Friends category, filtering out the ones with tags
+		AddFriendsByFlag( k_EFriendFlagImmediate, "Friends", &vecTaggedSteamIDs );
 
-    PopSelectedItem();
-  }
+		// Finally add the pending outgoing requests
+		AddFriendsByFlag( k_EFriendFlagRequestingFriendship, "Outgoing Friend Requests" );
+
+		PopSelectedItem();
+	}
 
 private:
-  void AddFriendsByFlag(int iFriendFlag, const char* pszName, std::vector<CSteamID>* pVecIgnoredSteamIDs = NULL) {
-    int iFriendCount = SteamFriends()->GetFriendCount(iFriendFlag);
-    if (!iFriendCount)
-      return;
 
-    AddMenuItem(CFriendsListMenu::MenuItem_t("", k_menuItemEmpty));
-    AddMenuItem(CFriendsListMenu::MenuItem_t(pszName, k_menuItemEmpty));
+	void AddFriendsByFlag( int iFriendFlag, const char *pszName, std::vector<CSteamID> *pVecIgnoredSteamIDs = NULL )
+	{
+		int iFriendCount = SteamFriends()->GetFriendCount( iFriendFlag );
+		if ( !iFriendCount )
+			return;
 
-    for (int iFriend = 0; iFriend < iFriendCount; iFriend++) {
-      CSteamID steamIDFriend = SteamFriends()->GetFriendByIndex(iFriend, iFriendFlag);
+		AddMenuItem( CFriendsListMenu::MenuItem_t( "", k_menuItemEmpty ) );
+		AddMenuItem( CFriendsListMenu::MenuItem_t( pszName, k_menuItemEmpty ) );
 
-      // This mimicks the Steam client's feature where it only shows
-      // untagged friends in the canonical Friends section by default
-      if (pVecIgnoredSteamIDs && (std::find(pVecIgnoredSteamIDs->begin(), pVecIgnoredSteamIDs->end(), steamIDFriend) != pVecIgnoredSteamIDs->end()))
-        continue;
+		for ( int iFriend = 0; iFriend < iFriendCount; iFriend++ )
+		{
+			CSteamID steamIDFriend = SteamFriends()->GetFriendByIndex( iFriend, iFriendFlag );
 
-      AddFriendToMenu(steamIDFriend);
-    }
-  }
+			// This mimicks the Steam client's feature where it only shows
+			// untagged friends in the canonical Friends section by default
+			if ( pVecIgnoredSteamIDs && ( std::find( pVecIgnoredSteamIDs->begin(), pVecIgnoredSteamIDs->end(), steamIDFriend ) != pVecIgnoredSteamIDs->end() ) )
+				continue;
 
-  void AddFriendToMenu(CSteamID steamIDFriend) {
-    if (!steamIDFriend.IsValid())
-      return;
+			AddFriendToMenu( steamIDFriend );
+		}
+	}
 
-    FriendsListMenuItem_t menuItemFriend = {steamIDFriend};
+	void AddFriendToMenu( CSteamID steamIDFriend )
+	{
+		if ( !steamIDFriend.IsValid() )
+			return;
 
-    char szFriendNameBuffer[512] = {'\0'};
+		FriendsListMenuItem_t menuItemFriend = { steamIDFriend };
 
-    const char* pszFriendName = SteamFriends()->GetFriendPersonaName(steamIDFriend);
-    sprintf_safe(szFriendNameBuffer, "%s", pszFriendName);
+		char szFriendNameBuffer[512] = { '\0' };
 
-    const char* pszFriendNickname = SteamFriends()->GetPlayerNickname(steamIDFriend);
-    if (pszFriendNickname) {
-      sprintf_safe(szFriendNameBuffer, "%s (%s)", szFriendNameBuffer, pszFriendNickname);
-    }
+		const char *pszFriendName = SteamFriends()->GetFriendPersonaName( steamIDFriend );
+		sprintf_safe( szFriendNameBuffer, "%s", pszFriendName );
 
-    AddMenuItem(CFriendsListMenu::MenuItem_t(szFriendNameBuffer, menuItemFriend));
-  }
+		const char *pszFriendNickname = SteamFriends()->GetPlayerNickname( steamIDFriend );
+		if ( pszFriendNickname )
+		{
+			sprintf_safe( szFriendNameBuffer, "%s (%s)", szFriendNameBuffer, pszFriendNickname );
+		}
+
+		AddMenuItem( CFriendsListMenu::MenuItem_t( szFriendNameBuffer, menuItemFriend ) );
+	}
 };
 
-const FriendsListMenuItem_t CFriendsListMenu::k_menuItemEmpty = {k_steamIDNil};
+const FriendsListMenuItem_t CFriendsListMenu::k_menuItemEmpty = { k_steamIDNil };
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Constructor
 //-----------------------------------------------------------------------------
-CFriendsList::CFriendsList(IGameEngine* pGameEngine) : m_pGameEngine(pGameEngine) {
-  m_pFriendsListMenu = new CFriendsListMenu(pGameEngine);
+CFriendsList::CFriendsList( IGameEngine *pGameEngine ) : m_pGameEngine( pGameEngine )
+{
+	m_pFriendsListMenu = new CFriendsListMenu( pGameEngine );
 
-  Show();
+	Show();
 }
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Run a frame for the CFriendsList
 //-----------------------------------------------------------------------------
-void CFriendsList::RunFrame() {
-  m_pFriendsListMenu->RunFrame();
+void CFriendsList::RunFrame()
+{
+	m_pFriendsListMenu->RunFrame();	
 }
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Handles menu actions when viewing a friends list
 //-----------------------------------------------------------------------------
-void CFriendsList::OnMenuSelection(FriendsListMenuItem_t selection) {
-  // Do nothing (yet)
+void CFriendsList::OnMenuSelection( FriendsListMenuItem_t selection )
+{
+	// Do nothing (yet)
 }
+
 
 //-----------------------------------------------------------------------------
 // Purpose: Shows / Refreshes the friends list
 //-----------------------------------------------------------------------------
-void CFriendsList::Show() {
-  m_pFriendsListMenu->Rebuild();
+void CFriendsList::Show()
+{
+	m_pFriendsListMenu->Rebuild();
 }
+

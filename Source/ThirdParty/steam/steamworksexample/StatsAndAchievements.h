@@ -12,107 +12,102 @@
 #include "GameEngine.h"
 #include "Inventory.h"
 
-enum EAchievements {
-  ACH_WIN_ONE_GAME = 0,
-  ACH_WIN_100_GAMES = 1,
-  ACH_HEAVY_FIRE = 2,
-  ACH_TRAVEL_FAR_ACCUM = 3,
-  ACH_TRAVEL_FAR_SINGLE = 4,
+enum EAchievements
+{
+	ACH_WIN_ONE_GAME = 0,
+	ACH_WIN_100_GAMES = 1,
+	ACH_HEAVY_FIRE = 2,
+	ACH_TRAVEL_FAR_ACCUM = 3,
+	ACH_TRAVEL_FAR_SINGLE = 4,
 };
 
-struct Achievement_t {
-  EAchievements m_eAchievementID;
-  const char* m_pchAchievementID;
-  char m_rgchName[128];
-  char m_rgchDescription[256];
-  bool m_bAchieved;
-  int m_iIconImage;
+struct Achievement_t
+{
+	EAchievements m_eAchievementID;
+	const char *m_pchAchievementID;
+	char m_rgchName[128];
+	char m_rgchDescription[256];
+	bool m_bAchieved;
+	int m_iIconImage;
 };
 
 class ISteamUser;
 class CSpaceWarClient;
 
-class CStatsAndAchievements {
+class CStatsAndAchievements
+{
 public:
-  // Constructor
-  CStatsAndAchievements(IGameEngine* pGameEngine);
+	// Constructor
+	CStatsAndAchievements( IGameEngine *pGameEngine );
 
-  // Run a frame. Does not need to run at full frame rate.
-  void RunFrame();
+	// Run a frame. Does not need to run at full frame rate.
+	void RunFrame();
 
-  // Display the stats and achievements
-  void Render();
+	// Display the stats and achievements
+	void Render();
 
-  // Game state changed
-  void OnGameStateChange(EClientGameState eNewState);
+	// Game state changed
+	void OnGameStateChange( EClientGameState eNewState );
 
-  // Accumulators
-  void AddDistanceTraveled(float flDistance);
+	// Accumulators
+	void AddDistanceTraveled( float flDistance );
 
-  // accessors
-  float GetGameFeetTraveled() { return m_flGameFeetTraveled; }
-  double GetGameDurationSeconds() { return m_flGameDurationSeconds; }
+	// accessors
+	float GetGameFeetTraveled() { return m_flGameFeetTraveled; }
+	double GetGameDurationSeconds() { return m_flGameDurationSeconds; }
 
-  STEAM_CALLBACK(CStatsAndAchievements, OnUserStatsReceived, UserStatsReceived_t, m_CallbackUserStatsReceived);
-  STEAM_CALLBACK(CStatsAndAchievements, OnUserStatsStored, UserStatsStored_t, m_CallbackUserStatsStored);
-  STEAM_CALLBACK(CStatsAndAchievements, OnAchievementStored, UserAchievementStored_t, m_CallbackAchievementStored);
-  STEAM_CALLBACK(CStatsAndAchievements, OnPS3TrophiesInstalled, PS3TrophiesInstalled_t, m_CallbackPS3TrophiesInstalled);
-
+	STEAM_CALLBACK( CStatsAndAchievements, OnUserStatsStored, UserStatsStored_t, m_CallbackUserStatsStored );
+	STEAM_CALLBACK( CStatsAndAchievements, OnAchievementStored, UserAchievementStored_t, m_CallbackAchievementStored );
+	
 private:
-  // Determine if we get this achievement now
-  void EvaluateAchievement(Achievement_t& achievement);
-  void UnlockAchievement(Achievement_t& achievement);
 
-  // Store stats
-  void StoreStatsIfNecessary();
+	void LoadUserStats();
 
-  // Render helpers
-  void DrawAchievementInfo(RECT& rect, Achievement_t& ach);
-  void DrawStatInfo(RECT& rect, const char* pchName, float flValue);
-  void DrawInventory(RECT& rect, SteamItemInstanceID_t itemid);
+	// Determine if we get this achievement now
+	void EvaluateAchievement( Achievement_t &achievement );
+	void UnlockAchievement( Achievement_t &achievement );
 
-  // PS3 specific
-  bool LoadUserStatsOnPS3();
-  bool SaveUserStatsOnPS3();
+	// Store stats
+	void StoreStatsIfNecessary();
 
-  // our GameID
-  CGameID m_GameID;
+	// Render helpers
+	void DrawAchievementInfo( RECT &rect, Achievement_t &ach );
+	void DrawStatInfo( RECT &rect, const char *pchName, float flValue );
+	void DrawInventory( RECT &rect, SteamItemInstanceID_t itemid );
 
-  // Engine
-  IGameEngine* m_pGameEngine;
+	// our GameID
+	CGameID m_GameID;
 
-  // Steam User interface
-  ISteamUser* m_pSteamUser;
+	// Engine
+	IGameEngine *m_pGameEngine;
 
-  // Steam UserStats interface
-  ISteamUserStats* m_pSteamUserStats;
+	// Steam User interface
+	ISteamUser *m_pSteamUser;
 
-  // Display font
-  HGAMEFONT m_hDisplayFont;
+	// Steam UserStats interface
+	ISteamUserStats *m_pSteamUserStats;
 
-  // Did we get the stats from Steam?
-  bool m_bRequestedStats;
-  bool m_bStatsValid;
+	// Display font
+	HGAMEFONT m_hDisplayFont;
 
-  // Should we store stats this frame?
-  bool m_bStoreStats;
+	// Did we get the stats from Steam?
+	bool m_bStatsValid;
 
-  // Current Stat details
-  float m_flGameFeetTraveled;
-  uint64 m_ulTickCountGameStart;
-  double m_flGameDurationSeconds;
+	// Should we store stats this frame?
+	bool m_bStoreStats;
 
-  // Persisted Stat details
-  int m_nTotalGamesPlayed;
-  int m_nTotalNumWins;
-  int m_nTotalNumLosses;
-  float m_flTotalFeetTraveled;
-  float m_flMaxFeetTraveled;
-  float m_flAverageSpeed;
+	// Current Stat details
+	float m_flGameFeetTraveled;
+	uint64 m_ulTickCountGameStart;
+	double m_flGameDurationSeconds;
 
-  // PS3 specific
-  bool m_bStartedPS3TrophyInstall;
-  bool m_bInstalledPS3Trophies;
+	// Persisted Stat details
+	int m_nTotalGamesPlayed;
+	int m_nTotalNumWins;
+	int m_nTotalNumLosses;
+	float m_flTotalFeetTraveled;
+	float m_flMaxFeetTraveled;
+	float m_flAverageSpeed;
 };
 
 #endif // STATS_AND_ACHIEVEMENTS_H

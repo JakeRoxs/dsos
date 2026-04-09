@@ -20,7 +20,7 @@
 
 namespace {
 size_t CalculateMinimumLevelUpCost(int SoulLevel) {
-  // We skip levels below 13, then use a seperate calculation and our starting classes
+  // We skip levels below 13, then use a separate calculation and our starting classes
   // will bias the costs. So the result may be a little lower than normal.
 
   if (SoulLevel < 13) {

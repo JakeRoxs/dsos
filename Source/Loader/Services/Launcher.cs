@@ -1,6 +1,8 @@
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
@@ -14,7 +16,7 @@ namespace Loader.Services
 
     public bool ShouldRunContinualUpdate()
     {
-      if (RunningProcessHandle != IntPtr.Zero)
+      if (IsProcessRunning())
       {
         return true;
       }
@@ -35,14 +37,7 @@ namespace Loader.Services
 
       if (hostnameIp == machinePublicIp)
       {
-        if (privateHostnameIp == machinePrivateIp)
-        {
-          connectionHostname = "127.0.0.1";
-        }
-        else
-        {
-          connectionHostname = config.PrivateHostname;
-        }
+        connectionHostname = privateHostnameIp == machinePrivateIp ? "127.0.0.1" : config.PrivateHostname;
       }
 
       return connectionHostname;
@@ -56,13 +51,6 @@ namespace Loader.Services
         return false;
       }
 
-      if (RunningProcessHandle != IntPtr.Zero)
-      {
-#if DEBUG
-        KillNamedMutexIfExists();
-#endif
-      }
-
       string connectionHostname = ResolveConnectIp(config, machinePublicIp, machinePrivateIp);
 
       if (!BuildConfig.ExeLoadConfiguration.TryGetValue(ExeUtils.GetExeSimpleHash(exeLocation), out var loadConfig))
@@ -72,7 +60,7 @@ namespace Loader.Services
       }
 
       string exeDirectory = Path.GetDirectoryName(exeLocation) ?? string.Empty;
-      string appIdFile = Path.Combine(exeDirectory, "steam_appid.txt");
+      string appIdFile = Path.Join(exeDirectory, "steam_appid.txt");
       File.WriteAllText(appIdFile, loadConfig.SteamAppId.ToString());
 
       STARTUPINFO startupInfo = new STARTUPINFO();
@@ -124,11 +112,31 @@ namespace Loader.Services
       RunningProcessId = 0;
     }
 
+    public bool IsProcessRunning()
+    {
+      if (RunningProcessId == 0)
+      {
+        return false;
+      }
+
+      try
+      {
+        using var process = Process.GetProcessById((int)RunningProcessId);
+        return !process.HasExited;
+      }
+      catch (ArgumentException)
+      {
+        RunningProcessHandle = IntPtr.Zero;
+        RunningProcessId = 0;
+        return false;
+      }
+    }
+
     private bool TryRunInjector(ServerConfig config, string connectionHostname, bool useSeparateSaveFiles, PROCESS_INFORMATION processInfo, out string? errorMessage)
     {
       string? directoryPath = Path.GetDirectoryName(Application.ExecutablePath);
-      string injectorPath = Path.Combine(directoryPath ?? string.Empty, "Injector.dll");
-      string injectorConfigPath = Path.Combine(directoryPath ?? string.Empty, "Injector.config");
+      string injectorPath = Path.Join(directoryPath ?? string.Empty, "Injector.dll");
+      string injectorConfigPath = Path.Join(directoryPath ?? string.Empty, "Injector.config");
 
       while (!File.Exists(injectorPath))
       {
@@ -139,8 +147,8 @@ namespace Loader.Services
           return false;
         }
 
-        injectorPath = Path.Combine(directoryPath, "Injector.dll");
-        injectorConfigPath = Path.Combine(directoryPath, "Injector.config");
+        injectorPath = Path.Join(directoryPath, "Injector.dll");
+        injectorConfigPath = Path.Join(directoryPath, "Injector.config");
       }
 
       var injectConfig = new InjectionConfig
@@ -150,7 +158,7 @@ namespace Loader.Services
         ServerHostname = connectionHostname,
         ServerPort = config.Port,
         ServerGameType = config.GameType,
-        EnableSeperateSaveFiles = useSeparateSaveFiles
+        EnableSeparateSaveFiles = useSeparateSaveFiles
       };
 
       File.WriteAllText(injectorConfigPath, injectConfig.ToJson());
@@ -214,7 +222,7 @@ namespace Loader.Services
 
       for (int i = 0; i < 32; i++)
       {
-        IntPtr baseAddress = WinAPI.GetProcessModuleBaseAddress(processInfo.hProcess);
+        IntPtr baseAddress = WinAPI.GetProcessModuleBaseAddress((int)processInfo.dwProcessId);
         IntPtr patchAddress = (IntPtr)loadConfig.ServerInfoAddress;
         if (loadConfig.UsesASLR)
         {
@@ -240,21 +248,5 @@ namespace Loader.Services
       return false;
     }
 
-#if DEBUG
-    private void KillNamedMutexIfExists()
-    {
-      if (RunningProcessId == 0)
-      {
-        return;
-      }
-
-      var existingProcess = Process.GetProcessById((int)RunningProcessId);
-      if (existingProcess != null)
-      {
-        WinAPIProcesses.KillMutex(existingProcess, "\\BaseNamedObjects\\DarkSoulsIIIMutex");
-        WinAPIProcesses.KillMutex(existingProcess, "\\BaseNamedObjects\\DarkSoulsIIMutex");
-      }
-    }
-#endif
   }
 }

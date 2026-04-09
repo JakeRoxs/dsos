@@ -11,33 +11,35 @@
 #include "GameEngine.h"
 #include "SpaceWarClient.h"
 
+
 class CSpaceWarClient;
 class CRemotePlayListMenu;
 
-class CRemotePlayList {
+class CRemotePlayList
+{
 public:
-  // Constructor
-  CRemotePlayList(IGameEngine* pGameEngine);
+	// Constructor
+	CRemotePlayList( IGameEngine *pGameEngine );
 
-  // Run a frame
-  void RunFrame();
+	// Run a frame
+	void RunFrame();
 
-  // shows / refreshes Remote Play session list
-  void Show();
+	// shows / refreshes Remote Play session list
+	void Show();
 
-  // handles input from Remote Play session list menu
-  void OnMenuSelection(RemotePlayListMenuItem_t selection);
-
-private:
-  STEAM_CALLBACK(CRemotePlayList, OnRemotePlaySessionConnected, SteamRemotePlaySessionConnected_t);
-  STEAM_CALLBACK(CRemotePlayList, OnRemotePlaySessionDisconnected, SteamRemotePlaySessionDisconnected_t);
+	// handles input from Remote Play session list menu 
+	void OnMenuSelection( RemotePlayListMenuItem_t selection );
 
 private:
-  // Engine
-  IGameEngine* m_pGameEngine;
+	STEAM_CALLBACK( CRemotePlayList, OnRemotePlaySessionConnected, SteamRemotePlaySessionConnected_t );
+	STEAM_CALLBACK( CRemotePlayList, OnRemotePlaySessionDisconnected, SteamRemotePlaySessionDisconnected_t );
 
-  CRemotePlayListMenu* m_pRemotePlayListMenu;
-  int m_nNumControllers;
+private:
+	// Engine
+	IGameEngine *m_pGameEngine;
+
+	CRemotePlayListMenu *m_pRemotePlayListMenu;
+	int m_nNumControllers;
 };
 
 #endif // REMOTEPLAY_H

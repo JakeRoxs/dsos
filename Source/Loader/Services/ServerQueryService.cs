@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,15 +9,15 @@ namespace Loader.Services
 {
   public class ServerQueryService : IDisposable
   {
-    private Task<List<ServerConfig>?>? _currentQueryTask;
+    private Task<List<ServerConfig>>? _currentQueryTask;
     private CancellationTokenSource? _internalCts;
     private bool _disposed;
 
     public bool IsQueryInProgress => _currentQueryTask != null && !_currentQueryTask.IsCompleted;
 
-    public virtual Task<List<ServerConfig>?> QueryServersFromHubAsync(CancellationToken cancellationToken)
+    public virtual Task<List<ServerConfig>> QueryServersFromHubAsync(CancellationToken cancellationToken)
     {
-      // HubApi.ListServers can return null on failure.
+      // HubApi.ListServers now returns an empty list on failure instead of null.
       return Task.Run(() => HubApi.ListServers(), cancellationToken);
     }
 

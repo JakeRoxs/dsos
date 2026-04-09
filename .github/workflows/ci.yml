@@ -74,6 +74,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
 
@@ -81,7 +82,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             BASE_SHA=${{ github.event.pull_request.base.sha }}
             HEAD_SHA=${{ github.event.pull_request.head.sha }}
-            BRANCH=${{ github.event.pull_request.head.ref }}
+            BRANCH="$PR_HEAD_REF"
 
             # Use just the latest commit delta for the skip decision in PR flows, so non-build tweaks
             # after an earlier full build do not retrigger the entire matrix.
@@ -293,6 +294,12 @@ jobs:
         if: matrix.name == 'windows-ninja'
         uses: microsoft/setup-msbuild@v3
 
+      - name: Setup .NET SDK
+        if: matrix.name == 'windows-ninja' || matrix.name == 'linux-ninja'
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
       - name: Restore Loader NuGet packages
         if: matrix.name == 'windows-ninja'
         run: dotnet restore Source/Loader/Loader.csproj -p:Configuration=Release
@@ -312,6 +319,17 @@ jobs:
       - name: Run Loader tests
         if: matrix.name == 'windows-ninja'
         run: dotnet test Source/Loader/Tests/Loader.Tests.csproj --configuration Release --verbosity normal
+
+      # Build Loader.Avalonia after Windows-only loader/tests to avoid shared
+      # BaseIntermediateOutputPath assets-file collisions between net10.0-windows
+      # and net10.0 projects.
+      - name: Restore Loader.Avalonia NuGet packages
+        if: matrix.name == 'windows-ninja'
+        run: dotnet restore Source/Loader.Avalonia/Loader.Avalonia.csproj -p:Configuration=Release
+
+      - name: Build Loader.Avalonia project
+        if: matrix.name == 'windows-ninja'
+        run: dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
 
       - name: Build on Windows (Ninja)
         if: matrix.name == 'windows-ninja'
@@ -349,6 +367,14 @@ jobs:
           sudo apt-get install -y cmake ninja-build libssl-dev zlib1g-dev libsqlite3-dev pkg-config
           # UUID is used by the project; different distros name it differently.
           sudo apt-get install -y uuid-dev || sudo apt-get install -y libuuid-dev
+
+      - name: Restore Loader.Avalonia NuGet packages (Linux)
+        if: matrix.name == 'linux-ninja'
+        run: dotnet restore Source/Loader.Avalonia/Loader.Avalonia.csproj -p:Configuration=Release
+
+      - name: Build Loader.Avalonia project (Linux)
+        if: matrix.name == 'linux-ninja'
+        run: dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
 
       - name: Generate Solution (Linux)
         if: matrix.name == 'linux-ninja'

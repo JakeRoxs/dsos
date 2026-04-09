@@ -35,13 +35,13 @@ import time
 import traceback
 import unittest
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 # Constants to avoid literal duplication and improve unit test stability
 DEFAULT_SCAN_WORKFLOWS = "codeql.yml"
 UNKNOWN_GROUP = "<unknown>"
 THIRD_PARTY_PREFIX = "Source/ThirdParty/"
+TEST_EXAMPLE_SOURCE_PATH = "Source/Example.cs"
 DEFAULT_MCP_CONFIG_FILE = os.path.expanduser(
     os.path.join("~", "AppData", "Roaming", "Code", "User", "mcp.json")
 )
@@ -232,7 +232,8 @@ def run_todo_generation(args: Any, data: List[Dict[str, Any]], parser: argparse.
     if args.clean:
         _clean_todo_dir(todo_root)
 
-    written = _write_todos(groups, todo_root)
+    source_tag = "sonar" if args.source == "sonarqube" else "codeql"
+    written = _write_todos(groups, todo_root, source_tag=source_tag)
     print(f"Wrote {written} todo file(s) to {todo_root}")
     return written
 
@@ -750,19 +751,24 @@ def _rule_help_fields(rule_obj: Any) -> tuple[Optional[str], Optional[str]]:
 
 
 def render_todo_body(
-    issue_id: str, group_key: str, alerts: List[Dict[str, Any]], default_priority: str = "p2"
+    issue_id: str,
+    group_key: str,
+    alerts: List[Dict[str, Any]],
+    default_priority: str = "p2",
+    source_tag: str = "codeql",
 ) -> str:
     """Render a markdown todo body for a set of alerts in file-todos format."""
 
     title = f"Code scanning alerts: {group_key}"
     priority = _todo_priority(alerts, default_priority)
+    source_tag = source_tag.strip().lower() if source_tag else "codeql"
 
     lines: List[str] = [
         "---",
         "status: pending",
         f"priority: {priority}",
         f"issue_id: \"{issue_id}\"",
-        "tags: [security, code-scanning]",
+        f"tags: [security, code-scanning, {source_tag}]",
         "dependencies: []",
         "---",
         "",
@@ -837,7 +843,7 @@ def safe_filename(name: str) -> str:
 
 
 try:
-    from send2trash import send2trash
+    from send2trash import send2trash  # type: ignore[reportMissingModuleSource]
 except ImportError:
     send2trash = None
 
@@ -945,7 +951,7 @@ def _clean_todo_dir(todo_root: str) -> None:
         _safe_delete(existing)
 
 
-def _write_todos(groups: Dict[str, List[Dict[str, Any]]], todo_root: str) -> int:
+def _write_todos(groups: Dict[str, List[Dict[str, Any]]], todo_root: str, source_tag: str = "codeql") -> int:
     issue_id_counter = int(next_issue_id(todo_root))
     created_or_updated = 0
 
@@ -958,7 +964,7 @@ def _write_todos(groups: Dict[str, List[Dict[str, Any]]], todo_root: str) -> int
 
         if existing_path:
             existing_id = _extract_issue_id_from_filename(existing_path) or f"{issue_id_counter:03d}"
-            new_body = render_todo_body(existing_id, group_key, alerts)
+            new_body = render_todo_body(existing_id, group_key, alerts, source_tag=source_tag)
 
             with open(existing_path, "r", encoding="utf-8") as f:
                 existing_body = f.read()
@@ -975,7 +981,7 @@ def _write_todos(groups: Dict[str, List[Dict[str, Any]]], todo_root: str) -> int
             f"{issue_id_counter:03d}-pending-{severity_to_priority((alerts[0].get('rule', {}) or {}).get('severity'))}-{filename}.md",
         )
         with open(todo_path, "w", encoding="utf-8") as f:
-            f.write(render_todo_body(f"{issue_id_counter:03d}", group_key, alerts))
+            f.write(render_todo_body(f"{issue_id_counter:03d}", group_key, alerts, source_tag=source_tag))
 
         issue_id_counter += 1
         created_or_updated += 1
@@ -1111,10 +1117,31 @@ class AlertGroupingAndTodoRenderingTests(unittest.TestCase):
             }
         ]
         body = render_todo_body("100", "ExampleRule", alerts)
+        self.assertIn("tags: [security, code-scanning, codeql]", body)
         self.assertIn("**Category/Type:** CODE_SMELL", body)
         self.assertIn("**Recommendation:** Do something", body)
         self.assertIn("**More info:** https://example.com/docs", body)
         self.assertIn("`Source/Main.cs:10`", body)
+
+    def test_render_todo_body_includes_sonar_tag(self):
+        alerts = [
+            {
+                "number": 99,
+                "html_url": "https://example.com/alert/99",
+                "rule": {
+                    "name": "SonarRule",
+                    "description": "Sonar description",
+                    "severity": "major",
+                    "help": "Fix it",
+                },
+                "most_recent_instance": {
+                    "location": {"path": TEST_EXAMPLE_SOURCE_PATH, "start_line": 20},
+                    "message": {"text": "Example sonar issue"},
+                },
+            }
+        ]
+        body = render_todo_body("101", "SonarRule", alerts, source_tag="sonar")
+        self.assertIn("tags: [security, code-scanning, sonar]", body)
 
     def test_group_by_thirdparty_project_defaults_for_repo_sources(self):
         alert = {
@@ -1136,7 +1163,7 @@ class AlertGroupingAndTodoRenderingTests(unittest.TestCase):
                 "number": 1,
                 "html_url": "https://example.com/alert/1",
                 "rule": {"name": "MyRule", "description": "Desc", "severity": "warning", "help": "Fix it", "helpUri": "https://docs"},
-                "most_recent_instance": {"location": {"path": "Source/Example.cs", "start_line": 5}, "message": {"text": "Issue"}},
+                "most_recent_instance": {"location": {"path": TEST_EXAMPLE_SOURCE_PATH, "start_line": 5}, "message": {"text": "Issue"}},
             }
         ]
 
@@ -1152,7 +1179,7 @@ class AlertGroupingAndTodoRenderingTests(unittest.TestCase):
                     "number": 1,
                     "html_url": "https://example.com/alert/1",
                     "rule": {"name": "MyRule", "description": "Desc", "severity": "warning", "help": "Fix it now", "helpUri": "https://docs"},
-                    "most_recent_instance": {"location": {"path": "Source/Example.cs", "start_line": 5}, "message": {"text": "Issue"}},
+                    "most_recent_instance": {"location": {"path": TEST_EXAMPLE_SOURCE_PATH, "start_line": 5}, "message": {"text": "Issue"}},
                 }
             ]
 

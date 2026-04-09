@@ -12,28 +12,31 @@
 #include "StatsAndAchievements.h"
 #include "SpaceWarClient.h"
 
+
 class ISteamUser;
 
-class CClanChatRoom {
+class CClanChatRoom
+{
 public:
-  // Constructor
-  CClanChatRoom(IGameEngine* pGameEngine);
+	// Constructor
+	CClanChatRoom( IGameEngine *pGameEngine );
 
-  // Run a frame
-  void RunFrame();
+	// Run a frame
+	void RunFrame();
 
-  // shows / refreshes chat
-  void Show();
+	// shows / refreshes chat
+	void Show();
 
 private:
-  // Engine
-  IGameEngine* m_pGameEngine;
+	// Engine
+	IGameEngine *m_pGameEngine;
+	
+	// Called when SteamFriends()->JoinClanChatRoom() returns asynchronously
+	void OnJoinChatRoom( JoinClanChatRoomCompletionResult_t *pResult, bool bIOFailure );
+	CCallResult<CClanChatRoom, JoinClanChatRoomCompletionResult_t> m_SteamCallResultJoinChatRoom;
 
-  // Called when SteamFriends()->JoinClanChatRoom() returns asynchronously
-  void OnJoinChatRoom(JoinClanChatRoomCompletionResult_t* pResult, bool bIOFailure);
-  CCallResult<CClanChatRoom, JoinClanChatRoomCompletionResult_t> m_SteamCallResultJoinChatRoom;
+	CSteamID m_steamIDChat;
 
-  CSteamID m_steamIDChat;
 };
 
 #endif // CLANCHATROOM_H

@@ -1,4 +1,4 @@
-﻿<Project>
+<Project>
   <PropertyGroup>
     <!--
       Resolve repository root independent of whether a solution file is being
@@ -11,7 +11,11 @@
     <RepoRoot Condition="'$(SolutionDir)' == ''">$(MSBuildProjectDirectory)\..\..</RepoRoot>
     <RepoRoot Condition="'$(SolutionDir)' != ''">$(SolutionDir)\..</RepoRoot>
 
-    <BaseIntermediateOutputPath>$(RepoRoot)\Intermediate\$(Platform)_$(Configuration)\</BaseIntermediateOutputPath>
+    <!--
+      Include project name to avoid assets-file collisions between different SDK-style
+      projects/frameworks that share the same repo-level intermediate root on CI.
+    -->
+    <BaseIntermediateOutputPath>$(RepoRoot)\Intermediate\$(MSBuildProjectName)\$(Platform)_$(Configuration)\</BaseIntermediateOutputPath>
     <BaseOutputPath>$(RepoRoot)\Bin\$(Platform)_$(Configuration)\</BaseOutputPath>
   </PropertyGroup>
 </Project>

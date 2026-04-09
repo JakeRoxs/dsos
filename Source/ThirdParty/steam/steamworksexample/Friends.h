@@ -11,28 +11,30 @@
 #include "GameEngine.h"
 #include "SpaceWarClient.h"
 
+
 class CSpaceWarClient;
 class CFriendsListMenu;
 
-class CFriendsList {
+class CFriendsList
+{
 public:
-  // Constructor
-  CFriendsList(IGameEngine* pGameEngine);
+	// Constructor
+	CFriendsList( IGameEngine *pGameEngine );
 
-  // Run a frame
-  void RunFrame();
+	// Run a frame
+	void RunFrame();
 
-  // shows / refreshes friends list
-  void Show();
+	// shows / refreshes friends list
+	void Show();
 
-  // handles input from friends list menu
-  void OnMenuSelection(FriendsListMenuItem_t selection);
+	// handles input from friends list menu 
+	void OnMenuSelection( FriendsListMenuItem_t selection );
 
 private:
-  // Engine
-  IGameEngine* m_pGameEngine;
+	// Engine
+	IGameEngine *m_pGameEngine;
 
-  CFriendsListMenu* m_pFriendsListMenu;
+	CFriendsListMenu *m_pFriendsListMenu;
 };
 
 #endif // FRIENDS_H

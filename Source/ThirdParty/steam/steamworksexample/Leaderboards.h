@@ -12,49 +12,53 @@
 #include "StatsAndAchievements.h"
 #include "SpaceWarClient.h"
 
+
 class ISteamUser;
 class CSpaceWarClient;
 class CLeaderboardMenu;
 
-class CLeaderboards {
+class CLeaderboards
+{
 public:
-  // Constructor
-  CLeaderboards(IGameEngine* pGameEngine);
+	// Constructor
+	CLeaderboards( IGameEngine *pGameEngine );
 
-  // Run a frame
-  void RunFrame();
+	// Run a frame
+	void RunFrame();
 
-  // shows / refreshes leaderboard
-  void Show();
+	// shows / refreshes leaderboard
+	void Show();
 
-  // Updates leaderboards with stats from our just finished game
-  void UpdateLeaderboards(CStatsAndAchievements* pStats);
+	// Updates leaderboards with stats from our just finished game
+	void UpdateLeaderboards( CStatsAndAchievements *pStats );
 
-  // handles input from leaderboard menu
-  void OnMenuSelection(LeaderboardMenuItem_t selection);
+	// handles input from leaderboard menu 
+	void OnMenuSelection( LeaderboardMenuItem_t selection );	
 
 private:
-  void FindLeaderboards();
+	void FindLeaderboards();
 
-  // Engine
-  IGameEngine* m_pGameEngine;
+	// Engine
+	IGameEngine *m_pGameEngine;
 
-  // Called when SteamUserStats()->FindOrCreateLeaderboard() returns asynchronously
-  void OnFindLeaderboard(LeaderboardFindResult_t* pFindLearderboardResult, bool bIOFailure);
-  CCallResult<CLeaderboards, LeaderboardFindResult_t> m_SteamCallResultCreateLeaderboard;
+	// Called when SteamUserStats()->FindOrCreateLeaderboard() returns asynchronously
+	void OnFindLeaderboard( LeaderboardFindResult_t *pFindLearderboardResult, bool bIOFailure );
+	CCallResult<CLeaderboards, LeaderboardFindResult_t> m_SteamCallResultCreateLeaderboard;
 
-  // Called when SteamUserStats()->UploadLeaderboardScore() returns asynchronously
-  void OnUploadScore(LeaderboardScoreUploaded_t* pFindLearderboardResult, bool bIOFailure);
-  CCallResult<CLeaderboards, LeaderboardScoreUploaded_t> m_SteamCallResultUploadScore;
+	// Called when SteamUserStats()->UploadLeaderboardScore() returns asynchronously
+	void OnUploadScore( LeaderboardScoreUploaded_t *pFindLearderboardResult, bool bIOFailure );
+	CCallResult<CLeaderboards, LeaderboardScoreUploaded_t> m_SteamCallResultUploadScore;
 
-  // handles to our leaderboards
-  SteamLeaderboard_t m_hQuickestWinLeaderboard;
-  SteamLeaderboard_t m_hFeetTraveledLeaderboard;
+	// handles to our leaderboards
+	SteamLeaderboard_t m_hQuickestWinLeaderboard;
+	SteamLeaderboard_t m_hFeetTraveledLeaderboard;
 
-  int m_bLoading; // true if we looking up a leaderboard handle
+	int m_bLoading;										// true if we looking up a leaderboard handle
 
-  CLeaderboardMenu* m_pLeaderboardMenu; // Displays the current leaderboard
-  int m_nCurrentLeaderboard;            // Index for leaderboard the user is currently viewing
+
+	CLeaderboardMenu *m_pLeaderboardMenu;				// Displays the current leaderboard
+	int m_nCurrentLeaderboard;							// Index for leaderboard the user is currently viewing
+	
 };
 
 #endif // LEADERBOARDS_H

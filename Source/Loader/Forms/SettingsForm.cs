@@ -24,7 +24,7 @@ namespace Loader
     private void OnLoad(object sender, EventArgs e)
     {
       DoNotSaveSettings = true;
-      UseSeperateSavesCheckbox.Checked = ProgramSettings.Default.use_seperate_saves;
+      UseSeparateSavesCheckbox.Checked = ProgramSettings.Default.use_separate_saves;
       MasterServerUrlTextBox.Text = ProgramSettings.Default.hub_server_url;
       DoNotSaveSettings = false;
 
@@ -33,7 +33,7 @@ namespace Loader
 
     private void UpdateState()
     {
-      CopySavesButton.Enabled = ProgramSettings.Default.use_seperate_saves;
+      CopySavesButton.Enabled = ProgramSettings.Default.use_separate_saves;
     }
 
     private void CopySavesClicked(object sender, EventArgs e)
@@ -51,7 +51,7 @@ namespace Loader
       BasePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\DarkSoulsII";
       FilesCopied += CopySavesInDirectory(BasePath);
 
-      MessageBox.Show("Copied " + FilesCopied.ToString() + " retail saves to Rekindled Server.");
+      MessageBox.Show("Copied " + FilesCopied + " retail saves to Rekindled Server.");
     }
 
     private int CopySavesInDirectory(string BasePath)
@@ -84,7 +84,7 @@ namespace Loader
         return;
       }
 
-      ProgramSettings.Default.use_seperate_saves = UseSeperateSavesCheckbox.Checked;
+      ProgramSettings.Default.use_separate_saves = UseSeparateSavesCheckbox.Checked;
       ProgramSettings.Default.hub_server_url = MasterServerUrlTextBox.Text;
       ProgramSettings.Default.Save();
 

@@ -27,7 +27,7 @@ namespace Loader.Tests
     public void Update_RemovesStaleItemsAndAddsNewOnes()
     {
       var existingConfig = MakeConfig("1", name: "existing", players: 1);
-      var listView = new ListView();
+      using var listView = new ListView();
       var existingItem = new ListViewItem(new string[3], -1);
       existingItem.Tag = existingConfig;
       existingItem.SubItems[0].Text = existingConfig.Name;
@@ -47,7 +47,7 @@ namespace Loader.Tests
     public void Update_UpdatesExistingItemWithLatestValues()
     {
       var configV1 = MakeConfig("1", name: "A", players: 1);
-      var listView = new ListView();
+      using var listView = new ListView();
       var item = new ListViewItem(new string[3], -1);
       item.Tag = configV1;
       listView.Items.Add(item);

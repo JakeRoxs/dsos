@@ -1,0 +1,181 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="using:Loader"
+        x:Class="Loader.MainWindow"
+        Title="Rekindled Loader (Avalonia Preview)"
+        Width="1100"
+        Height="760"
+        MinWidth="900"
+        MinHeight="620"
+        KeyDown="Window_OnKeyDown">
+
+  <Window.Styles>
+    <Style Selector="TextBox.touch-target">
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="NumericUpDown.touch-target">
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <Style Selector="Button.touch-target">
+      <Setter Property="MinHeight" Value="52" />
+      <Setter Property="MinWidth" Value="136" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style Selector="Button.touch-target:focus">
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="#79AFFF" />
+    </Style>
+
+    <Style Selector="Button.primary-action">
+      <Setter Property="MinWidth" Value="220" />
+      <Setter Property="FontWeight" Value="Bold" />
+    </Style>
+
+    <Style Selector="CheckBox.touch-target">
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+
+    <Style Selector="ListBox#ServerListBox > ListBoxItem">
+      <Setter Property="MinHeight" Value="74" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+
+    <Style Selector="ListBox#ServerListBox > ListBoxItem:selected">
+      <Setter Property="Background" Value="#2E3F52" />
+    </Style>
+
+    <Style Selector="ListBox#ServerListBox > ListBoxItem:focus">
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="#79AFFF" />
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" Margin="16">
+    <TabControl x:Name="GameTabControl"
+                Grid.Row="0"
+                SelectedIndex="1"
+                SelectionChanged="GameTabControl_OnSelectionChanged">
+      <TabItem Header="Dark Souls II: SotFS" />
+      <TabItem Header="Dark Souls III" />
+    </TabControl>
+
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" Margin="0,12,0,0">
+      <TextBlock Text="Game Executable" VerticalAlignment="Center" />
+      <TextBox x:Name="ExeLocationTextBox"
+               Grid.Column="1"
+               Classes="touch-target"
+               Watermark="Select game executable..." />
+      <Button x:Name="BrowseButton"
+              Grid.Column="2"
+              Classes="touch-target"
+              Content="Browse"
+              Click="BrowseButton_OnClick" />
+    </Grid>
+
+    <Grid Grid.Row="2"
+          ColumnDefinitions="Auto,180,Auto,130,*,Auto,Auto"
+          ColumnSpacing="8"
+          Margin="0,12,0,12">
+      <TextBlock Text="Filter" VerticalAlignment="Center" />
+      <TextBox x:Name="FilterBox"
+               Grid.Column="1"
+               Classes="touch-target"
+               TextChanged="FilterBox_OnTextChanged" />
+      <TextBlock Grid.Column="2" Text="Min Players" VerticalAlignment="Center" />
+      <NumericUpDown x:Name="MinimumPlayersBox"
+                     Grid.Column="3"
+                     Classes="touch-target"
+                     Minimum="0"
+                     Maximum="999"
+                     Value="1"
+                     ValueChanged="MinimumPlayersBox_OnValueChanged" />
+      <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+        <CheckBox x:Name="HidePasswordedBox"
+                  Classes="touch-target"
+                  Content="Hide Passworded"
+                  IsChecked="True"
+                  Click="HidePasswordedBox_OnClick" />
+        <CheckBox x:Name="UseSeparateSavesBox"
+                  Classes="touch-target"
+                  Content="Use Separate Saves"
+                  IsChecked="True"
+                  Click="UseSeparateSavesBox_OnClick" />
+      </StackPanel>
+      <ProgressBar x:Name="RefreshProgress"
+                   Grid.Column="5"
+                   Width="140"
+                   IsIndeterminate="True"
+                   IsVisible="False"
+                   VerticalAlignment="Center" />
+      <Button x:Name="RefreshButton"
+              Grid.Column="6"
+              Classes="touch-target"
+              Content="Refresh"
+              Click="RefreshButton_OnClick" />
+    </Grid>
+
+    <Border Grid.Row="3" BorderBrush="#555" BorderThickness="1" CornerRadius="8">
+      <ListBox x:Name="ServerListBox"
+               ItemsSource="{Binding Servers}"
+               ScrollViewer.VerticalScrollBarVisibility="Auto"
+               SelectionChanged="ServerListBox_OnSelectionChanged">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:ServerConfig">
+            <Border Padding="14" MinHeight="64">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel>
+                  <TextBlock Text="{Binding Name}" FontSize="16" FontWeight="SemiBold" />
+                  <TextBlock Text="{Binding Description}" Opacity="0.85" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                  <TextBlock Text="{Binding PlayerCount, StringFormat='Players: {0}'}" HorizontalAlignment="Right" />
+                  <TextBlock Text="{Binding GameType}" HorizontalAlignment="Right" Opacity="0.75" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Border>
+
+    <Grid Grid.Row="4" ColumnDefinitions="*,Auto" Margin="0,12,0,0" ColumnSpacing="8">
+      <StackPanel Spacing="2">
+        <TextBlock x:Name="StatusText"
+                   VerticalAlignment="Center"
+                   Text="Ready."
+                   TextWrapping="Wrap" />
+        <TextBlock x:Name="ShortcutHintText"
+                   Text="Input: Keyboard/Mouse • Enter/Space = Action • Esc = Back • Arrows = Navigate • PageUp/PageDown = Game Tabs"
+                   Opacity="0.70"
+                   FontSize="12" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+        <Button x:Name="CopyHostButton"
+                Classes="touch-target"
+                Content="Copy Host"
+                IsEnabled="False"
+                Click="CopyHostButton_OnClick" />
+        <Button x:Name="OpenWebButton"
+                Classes="touch-target"
+                Content="Open Web"
+                IsEnabled="False"
+                Click="OpenWebButton_OnClick" />
+        <Button x:Name="LaunchButton"
+                Classes="touch-target primary-action"
+                Content="Launch (Baseline)"
+                IsEnabled="False"
+                Click="LaunchButton_OnClick" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

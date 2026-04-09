@@ -1,11 +1,11 @@
-﻿namespace Loader
+namespace Loader
 {
     partial class SettingsForm
     {
         /// <summary>
         /// Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private readonly System.ComponentModel.IContainer components = null;
 
         /// <summary>
         /// Clean up any resources being used.
@@ -31,7 +31,7 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SettingsForm));
             MasterServerUrlLabel = new System.Windows.Forms.Label();
             MasterServerUrlTextBox = new System.Windows.Forms.TextBox();
-            UseSeperateSavesCheckbox = new System.Windows.Forms.CheckBox();
+            UseSeparateSavesCheckbox = new System.Windows.Forms.CheckBox();
             label1 = new System.Windows.Forms.Label();
             CopySavesButton = new System.Windows.Forms.Button();
             SuspendLayout();
@@ -47,12 +47,12 @@
             MasterServerUrlTextBox.Name = "MasterServerUrlTextBox";
             MasterServerUrlTextBox.TextChanged += SettingChanged;
             // 
-            // UseSeperateSavesCheckbox
+            // UseSeparateSavesCheckbox
             // 
-            resources.ApplyResources(UseSeperateSavesCheckbox, "UseSeperateSavesCheckbox");
-            UseSeperateSavesCheckbox.Name = "UseSeperateSavesCheckbox";
-            UseSeperateSavesCheckbox.UseVisualStyleBackColor = true;
-            UseSeperateSavesCheckbox.CheckedChanged += SettingChanged;
+            resources.ApplyResources(UseSeparateSavesCheckbox, "UseSeparateSavesCheckbox");
+            UseSeparateSavesCheckbox.Name = "UseSeparateSavesCheckbox";
+            UseSeparateSavesCheckbox.UseVisualStyleBackColor = true;
+            UseSeparateSavesCheckbox.CheckedChanged += SettingChanged;
             // 
             // label1
             // 
@@ -72,7 +72,7 @@
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             Controls.Add(CopySavesButton);
             Controls.Add(label1);
-            Controls.Add(UseSeperateSavesCheckbox);
+            Controls.Add(UseSeparateSavesCheckbox);
             Controls.Add(MasterServerUrlTextBox);
             Controls.Add(MasterServerUrlLabel);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
@@ -87,7 +87,7 @@
 
         private System.Windows.Forms.Label MasterServerUrlLabel;
         private System.Windows.Forms.TextBox MasterServerUrlTextBox;
-        private System.Windows.Forms.CheckBox UseSeperateSavesCheckbox;
+        private System.Windows.Forms.CheckBox UseSeparateSavesCheckbox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Button CopySavesButton;
     }

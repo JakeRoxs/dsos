@@ -24,6 +24,45 @@ namespace Loader
   [SupportedOSPlatform("windows")]
   public static class SteamUtils
   {
+    private static bool TryGetLibraryPathFromVdfLine(string line, out string libraryPath)
+    {
+      libraryPath = string.Empty;
+
+      string trimmed = line.Trim();
+      if (trimmed.Length == 0 || trimmed[0] != '"')
+      {
+        return false;
+      }
+
+      int indexKeyStart = 0;
+      int indexKeyEnd = trimmed.IndexOf('"', indexKeyStart + 1);
+      if (indexKeyEnd == -1)
+      {
+        return false;
+      }
+
+      string key = trimmed.Substring(indexKeyStart + 1, indexKeyEnd - indexKeyStart - 1);
+      if (key != "path")
+      {
+        return false;
+      }
+
+      int indexValueStart = trimmed.IndexOf('"', indexKeyEnd + 1);
+      if (indexValueStart == -1)
+      {
+        return false;
+      }
+
+      int indexValueEnd = trimmed.IndexOf('"', indexValueStart + 1);
+      if (indexValueEnd == -1)
+      {
+        return false;
+      }
+
+      libraryPath = trimmed.Substring(indexValueStart + 1, indexValueEnd - indexValueStart - 1).Replace("\\\\", "\\");
+      return true;
+    }
+
     public static string GetGameInstallPath(string FolderName)
     {
       object? rawPath = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam", "SteamPath", "");
@@ -33,14 +72,6 @@ namespace Loader
         return "";
       }
 
-      /*
-      string PotentialPath = SteamPath + @"\steamapps\common\" + FolderName;
-      if (Directory.Exists(PotentialPath))
-      {
-          return PotentialPath;
-      }
-      */
-
       string ConfigVdfPath = SteamPath + @"\steamapps\LibraryFolders.vdf";
       if (!File.Exists(ConfigVdfPath))
       {
@@ -49,43 +80,14 @@ namespace Loader
 
       // Turbo-shit parsing. Lets just pretend you didn't see any of this ...
       string[] Lines = File.ReadAllLines(ConfigVdfPath);
-      foreach (string Line in Lines)
+      foreach (string line in Lines)
       {
-        string Trimmed = Line.Trim();
-        if (!Trimmed.StartsWith("\""))
+        if (!TryGetLibraryPathFromVdfLine(line, out string libraryPath))
         {
           continue;
         }
 
-        int IndexKeyStart = 0;
-        int IndexKeyEnd = Trimmed.IndexOf("\"", IndexKeyStart + 1);
-        if (IndexKeyEnd == -1)
-        {
-          continue;
-        }
-
-        string Key = Trimmed.Substring(IndexKeyStart + 1, IndexKeyEnd - IndexKeyStart - 1);
-        if (Key != "path")
-        {
-          continue;
-        }
-
-        int IndexValueStart = Trimmed.IndexOf("\"", IndexKeyEnd + 1);
-        if (IndexValueStart == -1)
-        {
-          continue;
-        }
-
-        int IndexValueEnd = Trimmed.IndexOf("\"", IndexValueStart + 1);
-        if (IndexValueEnd == -1)
-        {
-          continue;
-        }
-
-        string Value = Trimmed.Substring(IndexValueStart + 1, IndexValueEnd - IndexValueStart - 1);
-        Value = Value.Replace("\\\\", "\\");
-
-        string PotentialPath = Value + @"\steamapps\common\" + FolderName;
+        string PotentialPath = libraryPath + @"\steamapps\common\" + FolderName;
         if (Directory.Exists(PotentialPath))
         {
           return PotentialPath;
@@ -103,11 +105,11 @@ namespace Loader
       }
       object? ActiveUserValue = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam\ActiveProcess", "ActiveUser", 0);
       object? ActivePidValue = Registry.GetValue(@"HKEY_CURRENT_USER\SOFTWARE\Valve\Steam\ActiveProcess", "pid", 0);
-      if (ActiveUserValue == null || ActiveUserValue is not int)
+      if (ActiveUserValue is not int)
       {
         return false;
       }
-      if (ActivePidValue == null || ActivePidValue is not int)
+      if (ActivePidValue is not int)
       {
         return false;
       }
@@ -126,7 +128,7 @@ namespace Loader
       try
       {
         Process proc = Process.GetProcessById(Pid);
-        if (proc == null || proc.HasExited)
+        if (proc.HasExited)
         {
           return false;
         }

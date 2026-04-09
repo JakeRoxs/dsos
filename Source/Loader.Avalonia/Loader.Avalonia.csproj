@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationIcon>..\..\Resources\icon.ico</ApplicationIcon>
+    <AssemblyName>Loader.Avalonia</AssemblyName>
+    <RootNamespace>Loader</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.0-beta3" />
+    <PackageReference Include="Zafiro.Avalonia" Version="51.2.0" />
+    <PackageReference Include="Zafiro.Avalonia.Dialogs" Version="51.2.0" />
+    <PackageReference Include="Zafiro.Avalonia.Generators" Version="51.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Loader\Api\HubApi.cs" Link="Shared\Api\HubApi.cs" />
+    <Compile Include="..\Loader\Config\BuildConfig.cs" Link="Shared\Config\BuildConfig.cs" />
+    <Compile Include="..\Loader\Config\ServerConfig.cs" Link="Shared\Config\ServerConfig.cs" />
+    <Compile Include="..\Loader\Services\ConfigService.cs" Link="Shared\Services\ConfigService.cs" />
+    <Compile Include="..\Loader\Services\ServerListManager.cs" Link="Shared\Services\ServerListManager.cs" />
+    <Compile Include="..\Loader\Services\ServerQueryService.cs" Link="Shared\Services\ServerQueryService.cs" />
+    <Compile Include="..\Loader\Utils\ExeUtils.cs" Link="Shared\Utils\ExeUtils.cs" />
+    <Compile Include="..\Loader\Utils\NetUtils.cs" Link="Shared\Utils\NetUtils.cs" />
+  </ItemGroup>
+
+</Project>

@@ -12,19 +12,20 @@
 #include "GameEngine.h"
 #include "VectorEntity.h"
 
-class CSpaceWarEntity : public CVectorEntity {
+class CSpaceWarEntity : public CVectorEntity
+{
 public:
-  // Constructor
-  CSpaceWarEntity(IGameEngine* pGameEngine, uint32 uCollisionRadius, bool bAffectedByGravity);
+	// Constructor
+	CSpaceWarEntity( IGameEngine *pGameEngine, uint32 uCollisionRadius, bool bAffectedByGravity );
 
-  // Destructor
-  virtual ~CSpaceWarEntity() { return; }
+	// Destructor
+	virtual ~CSpaceWarEntity() { return; }
 
-  // Run Frame
-  void RunFrame();
+	// Run Frame
+	void RunFrame();
 
 private:
-  bool m_bAffectedByGravity;
+	bool m_bAffectedByGravity;
 };
 
 #endif // SPACEWARENTITY_H

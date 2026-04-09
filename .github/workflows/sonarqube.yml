@@ -13,13 +13,16 @@ on:
         default: "main"
 
 permissions:
+  contents: read
   pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
   SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  SONAR_LOADER_PROJECT_KEY: ${{ vars.SONAR_LOADER_PROJECT_KEY }}
-  SONAR_SERVER_PROJECT_KEY: ${{ vars.SONAR_SERVER_PROJECT_KEY }}
 
 jobs:
   sonar-loader:
@@ -33,39 +36,95 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "8.0.x"
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-sonarqube-${{ hashFiles('Source/Loader/**/*.csproj', 'Source/Loader.Avalonia/**/*.csproj', '**/Directory.Packages.props', '**/global.json', '**/nuget.config') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-sonarqube-
+
+      - name: Cache SonarQube scanner plugins
+        uses: actions/cache@v5
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar-plugin-cache-loader-v1
+          restore-keys: |
+            ${{ runner.os }}-sonar-plugin-cache-loader-
+
+      - name: Cache SonarScanner for .NET tool
+        id: cache-sonarscanner-tool
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/dotnet-sonarscanner
+          key: ${{ runner.os }}-dotnet-sonarscanner-v1
+          restore-keys: |
+            ${{ runner.os }}-dotnet-sonarscanner-
 
       - name: Validate SonarQube settings
         shell: bash
         run: |
           [[ -n "$SONAR_HOST_URL" ]] || { echo "SONAR_HOST_URL is not set"; exit 1; }
           [[ -n "$SONAR_TOKEN" ]] || { echo "SONAR_TOKEN is not set"; exit 1; }
-          [[ -n "$SONAR_LOADER_PROJECT_KEY" ]] || { echo "SONAR_LOADER_PROJECT_KEY is not set"; exit 1; }
 
       - name: Restore Loader projects
         run: |
-          dotnet restore Source/Loader/Loader.csproj -p:EnableWindowsTargeting=true
-          dotnet restore Source/Loader/Tests/Loader.Tests.csproj -p:EnableWindowsTargeting=true
+          dotnet restore Source/Loader/Loader.csproj -p:Configuration=Release -p:EnableWindowsTargeting=true
+          dotnet restore Source/Loader/Tests/Loader.Tests.csproj -p:Configuration=Release -p:EnableWindowsTargeting=true
+          dotnet restore Source/Loader.Avalonia/Loader.Avalonia.csproj -p:Configuration=Release
 
       - name: Install SonarScanner for .NET
+        if: steps.cache-sonarscanner-tool.outputs.cache-hit != 'true'
         run: |
-          dotnet tool update --global dotnet-sonarscanner
-          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          dotnet tool update dotnet-sonarscanner --tool-path "$RUNNER_TEMP/dotnet-sonarscanner"
+
+      - name: Add SonarScanner for .NET to PATH
+        run: echo "$RUNNER_TEMP/dotnet-sonarscanner" >> "$GITHUB_PATH"
 
       - name: Run SonarScanner (Loader C#)
+        id: scan_loader
+        continue-on-error: true
         run: |
           dotnet sonarscanner begin \
-            /k:"$SONAR_LOADER_PROJECT_KEY" \
+            /k:"Rekindled-Server-Loader" \
             /n:"rekindled-server-loader" \
             /d:sonar.host.url="$SONAR_HOST_URL" \
             /d:sonar.login="$SONAR_TOKEN" \
-            /d:sonar.exclusions="Source/ThirdParty/**,Protobuf/**,build/**" \
+            /d:sonar.exclusions="Source/Loader.Avalonia/**,Source/ThirdParty/**,Protobuf/**,build/**,Resources/**,Tools/**,*.dockerfile" \
             /d:sonar.sourceEncoding="UTF-8" \
             /d:sonar.qualitygate.wait="true"
-          dotnet build Source/Loader/Loader.csproj --configuration Release -p:EnableWindowsTargeting=true
-          dotnet build Source/Loader/Tests/Loader.Tests.csproj --configuration Release -p:EnableWindowsTargeting=true
-          dotnet test Source/Loader/Tests/Loader.Tests.csproj --configuration Release --no-build -p:EnableWindowsTargeting=true
+          dotnet build Source/Loader/Loader.csproj --configuration Release --no-restore -p:EnableWindowsTargeting=true
+          dotnet build Source/Loader/Tests/Loader.Tests.csproj --configuration Release --no-restore -p:EnableWindowsTargeting=true
+          dotnet test Source/Loader/Tests/Loader.Tests.csproj --configuration Release --no-build --no-restore -p:EnableWindowsTargeting=true
           dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
+
+      - name: Run SonarScanner (Loader Avalonia C#)
+        id: scan_loader_avalonia
+        continue-on-error: true
+        run: |
+          dotnet sonarscanner begin \
+            /k:"Rekindled-Server-Loader-Avalonia" \
+            /n:"rekindled-server-loader-avalonia" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.login="$SONAR_TOKEN" \
+            /d:sonar.exclusions="Source/Loader/**,Source/ThirdParty/**,Protobuf/**,build/**,Resources/**,Tools/**,*.dockerfile" \
+            /d:sonar.sourceEncoding="UTF-8" \
+            /d:sonar.qualitygate.wait="true"
+          dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
+          dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
+
+      - name: Fail job if any Loader Sonar scan failed
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.scan_loader.outcome }}" != "success" || "${{ steps.scan_loader_avalonia.outcome }}" != "success" ]]; then
+            echo "One or more Loader Sonar scans failed (or quality gate failed)."
+            echo "scan_loader outcome: ${{ steps.scan_loader.outcome }}"
+            echo "scan_loader_avalonia outcome: ${{ steps.scan_loader_avalonia.outcome }}"
+            exit 1
+          fi
 
   sonar-server:
     name: SonarQube Server (C++)
@@ -74,7 +133,6 @@ jobs:
       - name: Validate SonarQube settings
         shell: bash
         run: |
-          [[ -n "$SONAR_SERVER_PROJECT_KEY" ]] || { echo "SONAR_SERVER_PROJECT_KEY is not set"; exit 1; }
           [[ -n "$SONAR_TOKEN" ]] || { echo "SONAR_TOKEN is not set"; exit 1; }
           [[ -n "$SONAR_HOST_URL" ]] || { echo "SONAR_HOST_URL is not set"; exit 1; }
 
@@ -91,7 +149,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.sonar/cache
-          key: sonar-plugin-cache-${{ runner.os }}
+          key: sonar-plugin-cache-${{ runner.os }}-v1
           restore-keys: sonar-plugin-cache-${{ runner.os }}-
 
       - name: Configure CMake (generates compile_commands.json)
@@ -100,10 +158,10 @@ jobs:
       - uses: SonarSource/sonarqube-scan-action@v7
         with:
           args: >
-            -Dsonar.projectKey=${{ env.SONAR_SERVER_PROJECT_KEY }}
+            -Dsonar.projectKey=JakeRoxs_server_9178fbff-b3bf-4c2c-9c34-efc7eb852932
             -Dsonar.projectName=rekindled-server
             -Dsonar.sources=.
-            -Dsonar.exclusions=Source/ThirdParty/**,Protobuf/**,build/**,Source/Loader/**
+            -Dsonar.exclusions=Source/ThirdParty/**,Protobuf/**,build/**,Source/Loader/**,Resources/**
             -Dsonar.cfamily.compile-commands=build/compile_commands.json
             -Dsonar.cfamily.threads=4
             -Dsonar.sourceEncoding=UTF-8

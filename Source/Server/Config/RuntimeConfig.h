@@ -186,15 +186,15 @@ public:
   // server when its advertised.
   std::string Password = "";
 
-  // Comma seperated list of the mods that can be installed when using this server.
+  // Comma separated list of the mods that can be installed when using this server.
   // Note: This is unimplemented right now, this is for future work.
   std::string ModsWhitelist = "";
 
-  // Comma seperated list of the mods that cannot be installed when using this server.
+  // Comma separated list of the mods that cannot be installed when using this server.
   // Note: This is unimplemented right now, this is for future work.
   std::string ModsBlacklist = "";
 
-  // Comma seperated list of the mods that have to be installed when using this server.
+  // Comma separated list of the mods that have to be installed when using this server.
   // Note: This is unimplemented right now, this is for future work.
   std::string ModsRequiredList = "";
 

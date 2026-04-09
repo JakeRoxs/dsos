@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,9 +16,9 @@ namespace Loader.Tests
     public void ConfigService_SaveAndLoadSettings_WorksForExistingExePath()
     {
       // Arrange
-      string tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+      string tempPath = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString());
       Directory.CreateDirectory(tempPath);
-      string exeFile = Path.Combine(tempPath, "DarkSoulsIII.exe");
+      string exeFile = Path.Join(tempPath, "DarkSoulsIII.exe");
       File.WriteAllText(exeFile, "stub");
 
       var configService = new Loader.Services.ConfigService();
@@ -92,9 +93,9 @@ namespace Loader.Tests
 
     private sealed class TestableServerQueryService : Loader.Services.ServerQueryService
     {
-      public override Task<List<ServerConfig>?> QueryServersFromHubAsync(CancellationToken cancellationToken)
+      public override Task<List<ServerConfig>> QueryServersFromHubAsync(CancellationToken cancellationToken)
       {
-        return Task.FromResult<List<ServerConfig>?>(new List<ServerConfig> { new ServerConfig { Name = "demo" } });
+        return Task.FromResult(new List<ServerConfig> { new ServerConfig { Name = "demo" } });
       }
     }
   }

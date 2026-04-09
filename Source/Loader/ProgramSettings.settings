@@ -14,7 +14,7 @@
     <Setting Name="minimum_players" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">1</Value>
     </Setting>
-    <Setting Name="use_seperate_saves" Type="System.Boolean" Scope="User">
+    <Setting Name="use_separate_saves" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="ds2_exe_location" Type="System.String" Scope="User">

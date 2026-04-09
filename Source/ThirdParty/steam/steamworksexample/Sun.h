@@ -13,13 +13,15 @@
 
 #define SUN_VECTOR_SCALE_FACTOR 14
 
-class CSun : public CSpaceWarEntity {
+class CSun : public CSpaceWarEntity
+{
 public:
-  // Constructor
-  CSun(IGameEngine* pGameEngine);
+	// Constructor
+	CSun( IGameEngine *pGameEngine );
 
-  // Run a frame
-  void RunFrame();
+	// Run a frame
+	void RunFrame();
+
 };
 
 #endif // SUN_H

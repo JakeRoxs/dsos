@@ -22,28 +22,30 @@ PFNglUniformBufferEXT pfnglUniformBufferEXT;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 
-void* NSGLGetProcAddress(const char* name) {
-  NSSymbol symbol;
-  char* symbolName = (char*)malloc(strlen(name) + 2);
-  strcpy(symbolName + 1, name);
-  symbolName[0] = '_';
-  symbol = NULL;
-  if (NSIsSymbolNameDefined(symbolName))
-    symbol = NSLookupAndBindSymbol(symbolName);
-  free(symbolName);
-  return symbol ? NSAddressOfSymbol(symbol) : NULL;
+void * NSGLGetProcAddress (const char *name)
+{
+    NSSymbol symbol;
+    char *symbolName = (char *)malloc (strlen (name) + 2); 
+    strcpy(symbolName + 1, name); 
+    symbolName[0] = '_'; 
+    symbol = NULL;
+    if (NSIsSymbolNameDefined (symbolName)) 
+        symbol = NSLookupAndBindSymbol (symbolName);
+    free (symbolName);
+    return symbol ? NSAddressOfSymbol (symbol) : NULL;
 }
 
 #pragma clang diagnostic pop
 
-void GLMSetupExtensions(void) {
-  pfnglColorMaskIndexedEXT = (PFNglColorMaskIndexedEXT)NSGLGetProcAddress("glColorMaskIndexedEXT");
-  pfnglEnableIndexedEXT = (PFNglEnableIndexedEXT)NSGLGetProcAddress("glEnableIndexedEXT");
-  pfnglDisableIndexedEXT = (PFNglDisableIndexedEXT)NSGLGetProcAddress("glDisableIndexedEXT");
+void GLMSetupExtensions( void )
+{
+	pfnglColorMaskIndexedEXT = (PFNglColorMaskIndexedEXT) NSGLGetProcAddress( "glColorMaskIndexedEXT" );
+	pfnglEnableIndexedEXT = (PFNglEnableIndexedEXT) NSGLGetProcAddress( "glEnableIndexedEXT" );
+	pfnglDisableIndexedEXT = (PFNglDisableIndexedEXT) NSGLGetProcAddress( "glDisableIndexedEXT" );
 
-  pfnglGetFramebufferAttachmentParameteriv = (PFNglGetFramebufferAttachmentParameteriv)NSGLGetProcAddress("glGetFramebufferAttachmentParameteriv");
+	pfnglGetFramebufferAttachmentParameteriv = (PFNglGetFramebufferAttachmentParameteriv) NSGLGetProcAddress( "glGetFramebufferAttachmentParameteriv" );
 
-  pfnglUniformBufferEXT = (PFNglUniformBufferEXT)NSGLGetProcAddress("glUniformBufferEXT");
+	pfnglUniformBufferEXT = (PFNglUniformBufferEXT) NSGLGetProcAddress( "glUniformBufferEXT" );
 }
 
 /*
@@ -59,47 +61,47 @@ void GLMSetupExtensions(void) {
 class CFunctionImporter
 {
 public:
-  CFBundleRef m_bundle;
+	CFBundleRef m_bundle;
 
-  CFunctionImporter( CFStringRef bundleID )	// for example CFSTR("com.apple.OpenGL")
-  {
-    m_bundle = CFBundleGetBundleWithIdentifier( bundleID );
-    if ( m_bundle )
-      CFRetain( m_bundle );
-  }
-
-  ~CFunctionImporter()
-  {
-    if( m_bundle )
-    {
-      CFRelease(m_bundle);
-      m_bundle = NULL;
-    }
-  }
-
-  void	*FindFunctionByName(CFStringRef name)		// ex CFSTR("glColorMaskedIndexedEXT")
-  {
-    void *result = NULL;
-    if (m_bundle)
-    {
-      result = CFBundleGetFunctionPointerForName(m_bundle, name);
-    }
-    return result;
-  }
+	CFunctionImporter( CFStringRef bundleID )	// for example CFSTR("com.apple.OpenGL")
+	{
+		m_bundle = CFBundleGetBundleWithIdentifier( bundleID );
+		if ( m_bundle )
+			CFRetain( m_bundle );
+	}
+	
+	~CFunctionImporter()
+	{
+		if( m_bundle )
+		{
+			CFRelease(m_bundle);
+			m_bundle = NULL;
+		}
+	}
+		
+	void	*FindFunctionByName(CFStringRef name)		// ex CFSTR("glColorMaskedIndexedEXT")
+	{
+		void *result = NULL;
+		if (m_bundle)
+		{
+			result = CFBundleGetFunctionPointerForName(m_bundle, name);
+		}
+		return result;
+	}
 };
 
 
 void GLMSetupExtensions( void )
 {
-  CFunctionImporter	importer( CFSTR("com.apple.OpenGL") );
-
-  #define	DO_IMPORT(name)	name = (name##FuncPtr)importer.FindFunctionByName( CFSTR(#name) );
-
-  #ifndef GL_EXT_draw_buffers2
-    // FIXME we're not checking for the extension string yet, we're just grabbing func ptrs
-    DO_IMPORT(glColorMaskIndexedEXT);
-    DO_IMPORT(glEnableIndexedEXT);
-    DO_IMPORT(glDisableIndexedEXT);
-  #endif
+	CFunctionImporter	importer( CFSTR("com.apple.OpenGL") );
+	
+	#define	DO_IMPORT(name)	name = (name##FuncPtr)importer.FindFunctionByName( CFSTR(#name) );
+	
+	#ifndef GL_EXT_draw_buffers2
+		// FIXME we're not checking for the extension string yet, we're just grabbing func ptrs
+		DO_IMPORT(glColorMaskIndexedEXT);
+		DO_IMPORT(glEnableIndexedEXT);
+		DO_IMPORT(glDisableIndexedEXT);
+	#endif
 }
 */

@@ -15,15 +15,16 @@
 #include "BaseMenu.h"
 #include "SpaceWarClient.h"
 
-class CMainMenu : public CBaseMenu<EClientGameState> {
+class CMainMenu : public CBaseMenu<EClientGameState>
+{
 public:
-  // Constructor
-  CMainMenu(IGameEngine* pGameEngine);
+	// Constructor
+	CMainMenu( IGameEngine *pGameEngine );
 
-  void SetupMenu();
+	void SetupMenu();
 
 private:
-  STEAM_CALLBACK(CMainMenu, OnParentalSettingsChanged, SteamParentalSettingsChanged_t);
+	STEAM_CALLBACK( CMainMenu, OnParentalSettingsChanged, SteamParentalSettingsChanged_t );
 };
 
 #endif // MAINMENU_H
