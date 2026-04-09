@@ -331,6 +331,18 @@ jobs:
         if: matrix.name == 'windows-ninja'
         run: dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
 
+      - name: Restore Loader.Avalonia tests NuGet packages
+        if: matrix.name == 'windows-ninja'
+        run: dotnet restore Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj -p:Configuration=Release
+
+      - name: Build Loader.Avalonia tests project
+        if: matrix.name == 'windows-ninja'
+        run: dotnet build Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj --configuration Release --no-restore
+
+      - name: Run Loader.Avalonia tests (Windows)
+        if: matrix.name == 'windows-ninja'
+        run: dotnet test Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj --configuration Release --no-build --no-restore --verbosity normal
+
       - name: Build on Windows (Ninja)
         if: matrix.name == 'windows-ninja'
         working-directory: ${{github.workspace}}/intermediate/build
@@ -375,6 +387,18 @@ jobs:
       - name: Build Loader.Avalonia project (Linux)
         if: matrix.name == 'linux-ninja'
         run: dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
+
+      - name: Restore Loader.Avalonia tests NuGet packages (Linux)
+        if: matrix.name == 'linux-ninja'
+        run: dotnet restore Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj -p:Configuration=Release
+
+      - name: Build Loader.Avalonia tests project (Linux)
+        if: matrix.name == 'linux-ninja'
+        run: dotnet build Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj --configuration Release --no-restore
+
+      - name: Run Loader.Avalonia tests (Linux)
+        if: matrix.name == 'linux-ninja'
+        run: dotnet test Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj --configuration Release --no-build --no-restore --verbosity normal
 
       - name: Generate Solution (Linux)
         if: matrix.name == 'linux-ninja'

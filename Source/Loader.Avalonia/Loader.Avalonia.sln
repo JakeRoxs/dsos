@@ -5,6 +5,10 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Loader.Avalonia", "Loader.Avalonia.csproj", "{3280D873-263D-4576-96A3-3CFE5143A95E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Loader.Avalonia.Tests", "Tests\Loader.Avalonia.Tests.csproj", "{D02CBB82-36C9-411D-BD9B-0480D45554AF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,8 +31,23 @@ Global
 		{3280D873-263D-4576-96A3-3CFE5143A95E}.Release|x64.Build.0 = Release|Any CPU
 		{3280D873-263D-4576-96A3-3CFE5143A95E}.Release|x86.ActiveCfg = Release|Any CPU
 		{3280D873-263D-4576-96A3-3CFE5143A95E}.Release|x86.Build.0 = Release|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Debug|x64.Build.0 = Debug|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Debug|x86.Build.0 = Debug|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Release|x64.ActiveCfg = Release|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Release|x64.Build.0 = Release|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Release|x86.ActiveCfg = Release|Any CPU
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{D02CBB82-36C9-411D-BD9B-0480D45554AF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

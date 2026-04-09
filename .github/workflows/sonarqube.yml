@@ -74,6 +74,7 @@ jobs:
           dotnet restore Source/Loader/Loader.csproj -p:Configuration=Release -p:EnableWindowsTargeting=true
           dotnet restore Source/Loader/Tests/Loader.Tests.csproj -p:Configuration=Release -p:EnableWindowsTargeting=true
           dotnet restore Source/Loader.Avalonia/Loader.Avalonia.csproj -p:Configuration=Release
+          dotnet restore Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj -p:Configuration=Release
 
       - name: Install SonarScanner for .NET
         if: steps.cache-sonarscanner-tool.outputs.cache-hit != 'true'
@@ -113,6 +114,8 @@ jobs:
             /d:sonar.sourceEncoding="UTF-8" \
             /d:sonar.qualitygate.wait="true"
           dotnet build Source/Loader.Avalonia/Loader.Avalonia.csproj --configuration Release --no-restore
+          dotnet build Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj --configuration Release --no-restore
+          dotnet test Source/Loader.Avalonia/Tests/Loader.Avalonia.Tests.csproj --configuration Release --no-build --no-restore
           dotnet sonarscanner end /d:sonar.login="$SONAR_TOKEN"
 
       - name: Fail job if any Loader Sonar scan failed

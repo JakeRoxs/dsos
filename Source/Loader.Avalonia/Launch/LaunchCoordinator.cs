@@ -7,7 +7,90 @@ namespace Loader
 {
   internal sealed class LaunchCoordinator
   {
-    public bool CanLaunchOnCurrentPlatform => OperatingSystem.IsWindows();
+    internal interface ILaunchPlatformServices
+    {
+      bool CanLaunchOnCurrentPlatform { get; }
+      bool FileExists(string path);
+      string GetFileName(string path);
+      string? GetDirectoryName(string path);
+      string GetExeSimpleHash(string exePath);
+      bool TryGetLoadConfiguration(string simpleHash, out DarkSoulsLoadConfig loadConfig);
+      string GetMachineIPv4(bool getPublicAddress);
+      string HostnameToIPv4(string hostname);
+      void WriteAllText(string path, string contents);
+      int? StartProcess(string fileName, string workingDirectory);
+    }
+
+    private sealed class DefaultLaunchPlatformServices : ILaunchPlatformServices
+    {
+      public bool CanLaunchOnCurrentPlatform => OperatingSystem.IsWindows();
+
+      public bool FileExists(string path)
+      {
+        return File.Exists(path);
+      }
+
+      public string GetFileName(string path)
+      {
+        return Path.GetFileName(path);
+      }
+
+      public string? GetDirectoryName(string path)
+      {
+        return Path.GetDirectoryName(path);
+      }
+
+      public string GetExeSimpleHash(string exePath)
+      {
+        return ExeUtils.GetExeSimpleHash(exePath);
+      }
+
+      public bool TryGetLoadConfiguration(string simpleHash, out DarkSoulsLoadConfig loadConfig)
+      {
+        return BuildConfig.ExeLoadConfiguration.TryGetValue(simpleHash, out loadConfig);
+      }
+
+      public string GetMachineIPv4(bool getPublicAddress)
+      {
+        return NetUtils.GetMachineIPv4(getPublicAddress);
+      }
+
+      public string HostnameToIPv4(string hostname)
+      {
+        return NetUtils.HostnameToIPv4(hostname);
+      }
+
+      public void WriteAllText(string path, string contents)
+      {
+        File.WriteAllText(path, contents);
+      }
+
+      public int? StartProcess(string fileName, string workingDirectory)
+      {
+        Process? process = Process.Start(new ProcessStartInfo
+        {
+          FileName = fileName,
+          WorkingDirectory = workingDirectory,
+          UseShellExecute = false
+        });
+
+        return process?.Id;
+      }
+    }
+
+    private readonly ILaunchPlatformServices _platformServices;
+
+    public LaunchCoordinator()
+        : this(new DefaultLaunchPlatformServices())
+    {
+    }
+
+    internal LaunchCoordinator(ILaunchPlatformServices platformServices)
+    {
+      _platformServices = platformServices ?? throw new ArgumentNullException(nameof(platformServices));
+    }
+
+    public bool CanLaunchOnCurrentPlatform => _platformServices.CanLaunchOnCurrentPlatform;
 
     public bool TryExecuteLaunch(
         ServerConfig server,
@@ -16,7 +99,7 @@ namespace Loader
         bool useSeparateSaves,
         out string message)
     {
-      if (!TryPrepareLaunch(server, exePath, gameType, useSeparateSaves, out string launchPlan))
+      if (!TryBuildLaunchPlan(server, exePath, gameType, useSeparateSaves, out DarkSoulsLoadConfig loadConfig, out string launchPlan))
       {
         message = launchPlan;
         return false;
@@ -34,18 +117,12 @@ namespace Loader
         return false;
       }
 
-      if (!BuildConfig.ExeLoadConfiguration.TryGetValue(ExeUtils.GetExeSimpleHash(exePath), out var loadConfig))
-      {
-        message = "Could not determine game executable version support.";
-        return false;
-      }
-
-      string exeDirectory = Path.GetDirectoryName(exePath) ?? string.Empty;
+      string exeDirectory = _platformServices.GetDirectoryName(exePath) ?? string.Empty;
       string appIdPath = Path.Combine(exeDirectory, "steam_appid.txt");
 
       try
       {
-        File.WriteAllText(appIdPath, loadConfig.SteamAppId.ToString());
+        _platformServices.WriteAllText(appIdPath, loadConfig.SteamAppId.ToString());
       }
       catch (Exception ex)
       {
@@ -53,15 +130,10 @@ namespace Loader
         return false;
       }
 
-      Process? process;
+      int? processId;
       try
       {
-        process = Process.Start(new ProcessStartInfo
-        {
-          FileName = exePath,
-          WorkingDirectory = exeDirectory,
-          UseShellExecute = false
-        });
+        processId = _platformServices.StartProcess(exePath, exeDirectory);
       }
       catch (Exception ex)
       {
@@ -69,7 +141,7 @@ namespace Loader
         return false;
       }
 
-      if (process == null)
+      if (!processId.HasValue)
       {
         message = "Failed to start game process: Process.Start returned null.";
         return false;
@@ -77,7 +149,7 @@ namespace Loader
 
       StringBuilder summary = new StringBuilder();
       summary.AppendLine("Launch started.");
-      summary.AppendLine($"Process Id: {process.Id}");
+      summary.AppendLine($"Process Id: {processId.Value}");
       summary.AppendLine();
       summary.AppendLine(launchPlan);
       summary.AppendLine();
@@ -94,6 +166,26 @@ namespace Loader
         bool useSeparateSaves,
         out string message)
     {
+      if (!TryBuildLaunchPlan(server, exePath, gameType, useSeparateSaves, out _, out string launchPlan))
+      {
+        message = launchPlan;
+        return false;
+      }
+
+      message = launchPlan;
+      return true;
+    }
+
+    private bool TryBuildLaunchPlan(
+        ServerConfig server,
+        string exePath,
+        GameType gameType,
+        bool useSeparateSaves,
+        out DarkSoulsLoadConfig loadConfig,
+        out string message)
+    {
+      loadConfig = default;
+
       if (server == null)
       {
         message = "No server selected.";
@@ -107,18 +199,18 @@ namespace Loader
         return false;
       }
 
-      string simpleHash = ExeUtils.GetExeSimpleHash(exePath);
-      if (!BuildConfig.ExeLoadConfiguration.TryGetValue(simpleHash, out var loadConfig))
+      string simpleHash = _platformServices.GetExeSimpleHash(exePath);
+      if (!_platformServices.TryGetLoadConfiguration(simpleHash, out loadConfig))
       {
         message = "Could not determine game executable version support.";
         return false;
       }
 
-      string machinePrivateIp = NetUtils.GetMachineIPv4(false);
-      string machinePublicIp = NetUtils.GetMachineIPv4(true);
+      string machinePrivateIp = _platformServices.GetMachineIPv4(false);
+      string machinePublicIp = _platformServices.GetMachineIPv4(true);
 
       string resolvedHost = ResolveConnectIp(server, machinePublicIp, machinePrivateIp);
-      string appIdPath = Path.Combine(Path.GetDirectoryName(exePath) ?? string.Empty, "steam_appid.txt");
+      string appIdPath = Path.Combine(_platformServices.GetDirectoryName(exePath) ?? string.Empty, "steam_appid.txt");
 
       StringBuilder summary = new StringBuilder();
       summary.AppendLine($"Server: {server.Name}");
@@ -134,20 +226,20 @@ namespace Loader
       return true;
     }
 
-    private static string? ValidateExecutable(string exePath, GameType gameType)
+    private string? ValidateExecutable(string exePath, GameType gameType)
     {
       if (string.IsNullOrWhiteSpace(exePath))
       {
         return "Select a game executable first.";
       }
 
-      if (!File.Exists(exePath))
+      if (!_platformServices.FileExists(exePath))
       {
         return "Selected executable does not exist.";
       }
 
       string expectedFile = gameType == GameType.DarkSouls3 ? "DarkSoulsIII.exe" : "DarkSoulsII.exe";
-      if (!string.Equals(Path.GetFileName(exePath), expectedFile, StringComparison.OrdinalIgnoreCase))
+      if (!string.Equals(_platformServices.GetFileName(exePath), expectedFile, StringComparison.OrdinalIgnoreCase))
       {
         return $"Selected executable does not match the selected game ({expectedFile}).";
       }
@@ -155,11 +247,11 @@ namespace Loader
       return null;
     }
 
-    private static string ResolveConnectIp(ServerConfig config, string machinePublicIp, string machinePrivateIp)
+    private string ResolveConnectIp(ServerConfig config, string machinePublicIp, string machinePrivateIp)
     {
       string connectionHostname = config.Hostname;
-      string hostnameIp = NetUtils.HostnameToIPv4(config.Hostname);
-      string privateHostnameIp = NetUtils.HostnameToIPv4(config.PrivateHostname);
+      string hostnameIp = _platformServices.HostnameToIPv4(config.Hostname);
+      string privateHostnameIp = _platformServices.HostnameToIPv4(config.PrivateHostname);
 
       if (hostnameIp == machinePublicIp)
       {
