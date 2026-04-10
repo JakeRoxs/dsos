@@ -9,6 +9,15 @@ namespace Loader.Tests
   [TestClass]
   public class LaunchCoordinatorTests
   {
+    private const string WindowsGameDirectory = @"C:\Games";
+    private const string DarkSouls3ExePath = WindowsGameDirectory + @"\DarkSoulsIII.exe";
+    private const string DarkSouls2ExePath = WindowsGameDirectory + @"\DarkSoulsII.exe";
+    private const string WindowsSteamAppIdPath = WindowsGameDirectory + @"\steam_appid.txt";
+    private const string SteamAppIdFileName = "steam_appid.txt";
+    private const string LinuxProtonInjectorScriptPath = "/home/user/proton-injector/scripts/inject.sh";
+    private const string LinuxInjectorDllPath = "/opt/loader/Injector.dll";
+    private const string LinuxExePath = "/home/user/.local/share/Steam/steamapps/common/DarkSoulsIII/DarkSoulsIII.exe";
+
     [TestMethod]
     public void TryPrepareLaunch_ReturnsFalse_WhenExecutablePathMissing()
     {
@@ -27,7 +36,7 @@ namespace Loader.Tests
       FakeLaunchPlatformServices platform = CreateValidPlatformServices();
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
 
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       bool prepared = coordinator.TryPrepareLaunch(CreateServer(), exePath, GameType.DarkSouls3, true, out string message);
 
       Assert.IsFalse(prepared);
@@ -40,7 +49,7 @@ namespace Loader.Tests
       FakeLaunchPlatformServices platform = CreateValidPlatformServices();
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
 
-      string exePath = @"C:\Games\DarkSoulsII.exe";
+      string exePath = DarkSouls2ExePath;
       platform.ExistingFiles.Add(exePath);
 
       bool prepared = coordinator.TryPrepareLaunch(CreateServer(), exePath, GameType.DarkSouls3, true, out string message);
@@ -55,7 +64,7 @@ namespace Loader.Tests
       FakeLaunchPlatformServices platform = CreateValidPlatformServices();
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
 
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       platform.ExistingFiles.Add(exePath);
       platform.HasLoadConfiguration = false;
 
@@ -72,7 +81,7 @@ namespace Loader.Tests
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
       ServerConfig server = CreateServer();
 
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       platform.ExistingFiles.Add(exePath);
 
       bool prepared = coordinator.TryPrepareLaunch(server, exePath, GameType.DarkSouls3, true, out string message);
@@ -81,7 +90,7 @@ namespace Loader.Tests
       StringAssert.Contains(message, "Server: Test Server");
       StringAssert.Contains(message, "Resolved Host: 127.0.0.1:4242");
       StringAssert.Contains(message, "Version: Dark Souls III - Test Build");
-      StringAssert.Contains(message, @"Steam AppId File: C:\Games\steam_appid.txt");
+      StringAssert.Contains(message, $"Steam AppId File: {WindowsSteamAppIdPath}");
       StringAssert.Contains(message, "Use Injector: True");
       StringAssert.Contains(message, "Use Separate Saves: True");
     }
@@ -93,7 +102,7 @@ namespace Loader.Tests
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
       ServerConfig server = CreateServer();
 
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       platform.ExistingFiles.Add(exePath);
       platform.ResolvedHostIps[server.PrivateHostname] = "10.1.2.3";
 
@@ -108,16 +117,18 @@ namespace Loader.Tests
     public void TryExecuteLaunch_ReturnsFalse_WhenPlatformCannotAutoLaunch()
     {
       FakeLaunchPlatformServices platform = CreateValidPlatformServices();
+      platform.IsLinux = false;
+      platform.IsWindows = true;
       platform.CanLaunchOnCurrentPlatform = false;
 
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       platform.ExistingFiles.Add(exePath);
 
       bool launched = coordinator.TryExecuteLaunch(CreateServer(), exePath, GameType.DarkSouls3, true, out string message);
 
       Assert.IsFalse(launched);
-      StringAssert.Contains(message, "Automatic process launch is currently implemented only on Windows in this iteration.");
+      StringAssert.Contains(message, "Automatic process launch is currently implemented only on Windows and Linux in this iteration.");
       StringAssert.Contains(message, "Generated launch preparation details:");
       StringAssert.Contains(message, "Server: Test Server");
     }
@@ -129,13 +140,13 @@ namespace Loader.Tests
       platform.WriteAllTextException = new IOException("disk full");
 
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       platform.ExistingFiles.Add(exePath);
 
       bool launched = coordinator.TryExecuteLaunch(CreateServer(), exePath, GameType.DarkSouls3, true, out string message);
 
       Assert.IsFalse(launched);
-      StringAssert.StartsWith(message, "Failed to write steam_appid.txt:");
+      StringAssert.StartsWith(message, $"Failed to write {SteamAppIdFileName}:");
       StringAssert.Contains(message, "disk full");
     }
 
@@ -146,14 +157,14 @@ namespace Loader.Tests
       platform.StartedProcessId = null;
 
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       platform.ExistingFiles.Add(exePath);
 
       bool launched = coordinator.TryExecuteLaunch(CreateServer(), exePath, GameType.DarkSouls3, true, out string message);
 
       Assert.IsFalse(launched);
       Assert.AreEqual("Failed to start game process: Process.Start returned null.", message);
-      Assert.AreEqual(@"C:\Games\steam_appid.txt", platform.LastWritePath);
+      Assert.AreEqual(WindowsSteamAppIdPath, platform.LastWritePath);
       Assert.AreEqual("374320", platform.LastWriteContents);
     }
 
@@ -165,15 +176,15 @@ namespace Loader.Tests
 
       LaunchCoordinator coordinator = new LaunchCoordinator(platform);
       ServerConfig server = CreateServer();
-      string exePath = @"C:\Games\DarkSoulsIII.exe";
+      string exePath = DarkSouls3ExePath;
       platform.ExistingFiles.Add(exePath);
 
       bool launched = coordinator.TryExecuteLaunch(server, exePath, GameType.DarkSouls3, true, out string message);
 
       Assert.IsTrue(launched);
       Assert.AreEqual(exePath, platform.LastStartFileName);
-      Assert.AreEqual(@"C:\Games", platform.LastStartWorkingDirectory);
-      Assert.AreEqual(@"C:\Games\steam_appid.txt", platform.LastWritePath);
+      Assert.AreEqual(WindowsGameDirectory, platform.LastStartWorkingDirectory);
+      Assert.AreEqual(WindowsSteamAppIdPath, platform.LastWritePath);
       Assert.AreEqual("374320", platform.LastWriteContents);
       Assert.AreEqual(1, platform.GetExeSimpleHashCallCount, "Launch execution should reuse a single prepared hash lookup.");
       Assert.AreEqual(1, platform.TryGetLoadConfigurationCallCount, "Launch execution should reuse a single prepared load-config lookup.");
@@ -183,11 +194,44 @@ namespace Loader.Tests
       StringAssert.Contains(message, "Note: Injector/memory patch handoff is not wired in this Avalonia slice yet.");
     }
 
+    [TestMethod]
+    public void TryExecuteLinuxLaunch_FindsProtonInjectorScriptAndInjectorDll()
+    {
+      FakeLaunchPlatformServices platform = CreateValidPlatformServices();
+      platform.IsLinux = true;
+      platform.IsWindows = false;
+      platform.CanLaunchOnCurrentPlatform = true;
+      platform.StartedProcessId = 7777;
+      platform.ExistingFiles.Add(LinuxProtonInjectorScriptPath);
+      platform.ExistingFiles.Add(LinuxInjectorDllPath);
+      platform.CurrentProcessDirectory = "/opt/loader";
+      platform.EnvironmentVariables["REKINDLED_PROTON_INJECTOR_SCRIPT"] = LinuxProtonInjectorScriptPath;
+
+      LaunchCoordinator coordinator = new LaunchCoordinator(platform);
+      ServerConfig server = CreateServer();
+      string exePath = LinuxExePath;
+      platform.ExistingFiles.Add(exePath);
+
+      bool launched = coordinator.TryExecuteLaunch(server, exePath, GameType.DarkSouls3, true, out string message);
+
+      Assert.IsTrue(launched, message);
+      Assert.AreEqual("/bin/bash", platform.LastStartFileName);
+      Assert.AreEqual("/home/user/proton-injector/scripts", platform.LastStartWorkingDirectory);
+      Assert.AreEqual(3, platform.LastStartArguments.Count);
+      Assert.AreEqual(LinuxProtonInjectorScriptPath, platform.LastStartArguments[0]);
+      StringAssert.Contains(message, "Proton injector script: /home/user/proton-injector/scripts/inject.sh");
+      StringAssert.Contains(message, "Injector DLL: /opt/loader/Injector.dll");
+      StringAssert.Contains(message, "Injector config: /opt/loader/Injector.config");
+      Assert.AreEqual("/opt/loader/Injector.config", platform.LastWritePath);
+    }
+
     private static FakeLaunchPlatformServices CreateValidPlatformServices()
     {
       FakeLaunchPlatformServices platform = new FakeLaunchPlatformServices
       {
         CanLaunchOnCurrentPlatform = true,
+        IsWindows = true,
+        IsLinux = false,
         ExpectedSimpleHash = "hash-ds3",
         MachinePrivateIp = "192.168.1.10",
         MachinePublicIp = "203.0.113.10",
@@ -201,7 +245,8 @@ namespace Loader.Tests
           Key = Array.Empty<uint>(),
           SteamAppId = 374320
         },
-        StartedProcessId = 7777
+        StartedProcessId = 7777,
+        CurrentProcessDirectory = @"C:\Games"
       };
 
       platform.ResolvedHostIps["public.example.com"] = "203.0.113.10";
@@ -226,6 +271,8 @@ namespace Loader.Tests
     private sealed class FakeLaunchPlatformServices : LaunchCoordinator.ILaunchPlatformServices
     {
       public bool CanLaunchOnCurrentPlatform { get; set; }
+      public bool IsWindows { get; set; }
+      public bool IsLinux { get; set; }
       public string ExpectedSimpleHash { get; set; } = "hash";
       public bool HasLoadConfiguration { get; set; }
       public DarkSoulsLoadConfig LoadConfiguration { get; set; }
@@ -233,16 +280,19 @@ namespace Loader.Tests
       public string MachinePublicIp { get; set; } = string.Empty;
       public int? StartedProcessId { get; set; }
       public Exception? WriteAllTextException { get; set; }
+      public string CurrentProcessDirectory { get; set; } = string.Empty;
 
       public string? LastWritePath { get; private set; }
       public string? LastWriteContents { get; private set; }
       public string? LastStartFileName { get; private set; }
       public string? LastStartWorkingDirectory { get; private set; }
+      public List<string> LastStartArguments { get; private set; } = new();
       public int GetExeSimpleHashCallCount { get; private set; }
       public int TryGetLoadConfigurationCallCount { get; private set; }
 
       public HashSet<string> ExistingFiles { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
       public Dictionary<string, string> ResolvedHostIps { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+      public Dictionary<string, string> EnvironmentVariables { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
       public bool FileExists(string path)
       {
@@ -266,7 +316,7 @@ namespace Loader.Tests
           return string.Empty;
         }
 
-        int lastSlash = path.LastIndexOfAny(new[] {'\\', '/'});
+        int lastSlash = path.LastIndexOfAny(new[] { '\\', '/' });
         return lastSlash < 0 ? path : path.Substring(lastSlash + 1);
       }
 
@@ -277,7 +327,7 @@ namespace Loader.Tests
           return null;
         }
 
-        int lastSlash = path.LastIndexOfAny(new[] {'\\', '/'});
+        int lastSlash = path.LastIndexOfAny(new[] { '\\', '/' });
         return lastSlash < 0 ? null : path.Substring(0, lastSlash);
       }
 
@@ -311,6 +361,16 @@ namespace Loader.Tests
         return ResolvedHostIps.TryGetValue(hostname, out string? value) ? value : string.Empty;
       }
 
+      public string? GetEnvironmentVariable(string name)
+      {
+        return EnvironmentVariables.TryGetValue(name, out string? value) ? value : null;
+      }
+
+      public string GetCurrentProcessDirectory()
+      {
+        return CurrentProcessDirectory;
+      }
+
       public void WriteAllText(string path, string contents)
       {
         if (WriteAllTextException != null)
@@ -322,10 +382,11 @@ namespace Loader.Tests
         LastWriteContents = contents;
       }
 
-      public int? StartProcess(string fileName, string workingDirectory)
+      public int? StartProcess(string fileName, string workingDirectory, IReadOnlyList<string>? arguments = null, IDictionary<string, string>? environmentVariables = null)
       {
         LastStartFileName = fileName;
         LastStartWorkingDirectory = workingDirectory;
+        LastStartArguments = arguments != null ? new List<string>(arguments) : new List<string>();
         return StartedProcessId;
       }
     }

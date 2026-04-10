@@ -32,6 +32,7 @@
   <ItemGroup>
     <Compile Include="..\Loader\Api\HubApi.cs" Link="Shared\Api\HubApi.cs" />
     <Compile Include="..\Loader\Config\BuildConfig.cs" Link="Shared\Config\BuildConfig.cs" />
+    <Compile Include="..\Loader\Config\InjectionConfig.cs" Link="Shared\Config\InjectionConfig.cs" />
     <Compile Include="..\Loader\Config\ServerConfig.cs" Link="Shared\Config\ServerConfig.cs" />
     <Compile Include="..\Loader\Services\ConfigService.cs" Link="Shared\Services\ConfigService.cs" />
     <Compile Include="..\Loader\Services\ServerListManager.cs" Link="Shared\Services\ServerListManager.cs" />
