@@ -77,6 +77,8 @@ mkdir -p rekindled-server/Loader
 loader_output_dir=""
 for candidate in \
   "$OUTPUT_ROOT/Loader.Avalonia" \
+  "$OUTPUT_ROOT/x64/Release/net10.0" \
+  "$OUTPUT_ROOT/Loader.Avalonia.dll" \
   "Source/Loader.Avalonia/bin/Release/net10.0" \
   "Source/Loader.Avalonia/bin/Release/net10.0-windows" \
   "Source/Loader.Avalonia/bin/Release/net10.0/linux-x64" \
@@ -94,17 +96,19 @@ if [ -n "$loader_output_dir" ]; then
     cp -R "$loader_output_dir/" rekindled-server/Loader/
   else
     cp "$loader_output_dir" rekindled-server/Loader/
-    cp "${loader_output_dir}.pdb" rekindled-server/Loader/ 2>/dev/null || true
+    cp "${loader_output_dir%.dll}.pdb" rekindled-server/Loader/ 2>/dev/null || true
   fi
 else
   echo "WARNING: Loader.Avalonia output not found in $OUTPUT_ROOT or Source/Loader.Avalonia/bin/Release"
   echo "Candidate paths tried:"
   echo "  $OUTPUT_ROOT/Loader.Avalonia"
+  echo "  $OUTPUT_ROOT/x64/Release/net10.0"
+  echo "  $OUTPUT_ROOT/Loader.Avalonia.dll"
   echo "  Source/Loader.Avalonia/bin/Release/net10.0"
   echo "  Source/Loader.Avalonia/bin/Release/net10.0-windows"
   echo "  Source/Loader.Avalonia/bin/Release/net10.0/linux-x64"
   echo "  Source/Loader.Avalonia/bin/Release/net10.0-windows/linux-x64"
-  ls -la Source/Loader.Avalonia/bin/Release 2>/dev/null || true
+  ls -la "Source/Loader.Avalonia/bin/Release" 2>/dev/null || true
   ERR=1
 fi
 

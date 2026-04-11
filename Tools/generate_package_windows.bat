@@ -74,10 +74,10 @@ if exist "%OUTPUT_ROOT%\Server.pdb" (
 
 if exist "%OUTPUT_ROOT%\Loader.exe" (
     xcopy /s "%OUTPUT_ROOT%\Loader.exe" rekindled-server\Loader\
-) else if exist "Bin\x64_Release\Loader.exe" (
-    xcopy /s "Bin\x64_Release\Loader.exe" rekindled-server\Loader\
-) else if exist "Bin\AnyCPU_Release\Loader.exe" (
-    xcopy /s "Bin\AnyCPU_Release\Loader.exe" rekindled-server\Loader\
+) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.exe" (
+    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader\
+) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.exe" (
+    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader\
 ) else if exist "Source\Loader\bin\Release\net10.0-windows\Loader.exe" (
     xcopy /s "Source\Loader\bin\Release\net10.0-windows\*" rekindled-server\Loader\
 ) else if exist "Source\Loader\bin\Release\net10.0\Loader.exe" (
@@ -88,10 +88,10 @@ if exist "%OUTPUT_ROOT%\Loader.exe" (
 )
 if exist "%OUTPUT_ROOT%\Loader.Avalonia.exe" (
     xcopy /s "%OUTPUT_ROOT%\Loader.Avalonia.exe" rekindled-server\Loader\
-) else if exist "Bin\x64_Release\Loader.Avalonia.exe" (
-    xcopy /s "Bin\x64_Release\Loader.Avalonia.exe" rekindled-server\Loader\
-) else if exist "Bin\AnyCPU_Release\Loader.Avalonia.exe" (
-    xcopy /s "Bin\AnyCPU_Release\Loader.Avalonia.exe" rekindled-server\Loader\
+) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.Avalonia.exe" (
+    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader\
+) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.Avalonia.exe" (
+    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader\
 ) else if exist "Source\Loader.Avalonia\bin\Release\net10.0\Loader.Avalonia.exe" (
     xcopy /s "Source\Loader.Avalonia\bin\Release\net10.0\*" rekindled-server\Loader\
 ) else (
@@ -101,10 +101,10 @@ if exist "%OUTPUT_ROOT%\Loader.Avalonia.exe" (
 
 if exist "%OUTPUT_ROOT%\Loader.Avalonia.pdb" (
     xcopy /s "%OUTPUT_ROOT%\Loader.Avalonia.pdb" rekindled-server\Loader\
-) else if exist "Bin\x64_Release\Loader.Avalonia.pdb" (
-    xcopy /s "Bin\x64_Release\Loader.Avalonia.pdb" rekindled-server\Loader\
-) else if exist "Bin\AnyCPU_Release\Loader.Avalonia.pdb" (
-    xcopy /s "Bin\AnyCPU_Release\Loader.Avalonia.pdb" rekindled-server\Loader\
+) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.Avalonia.pdb" (
+    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader\
+) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.Avalonia.pdb" (
+    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader\
 ) else if exist "Source\Loader.Avalonia\bin\Release\net10.0\Loader.Avalonia.pdb" (
     xcopy /s "Source\Loader.Avalonia\bin\Release\net10.0\*" rekindled-server\Loader\
 ) else (
