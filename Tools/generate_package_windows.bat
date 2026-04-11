@@ -22,10 +22,11 @@ if not exist "%OUTPUT_ROOT%" (
 
 echo Using package source output path: %OUTPUT_ROOT%
 
-if not exist "rekindled-server" mkdir "rekindled-server"
-if not exist "rekindled-server\Loader" mkdir "rekindled-server\Loader"
-if not exist "rekindled-server\Server" mkdir "rekindled-server\Server"
-if not exist "rekindled-server\Prerequisites" mkdir "rekindled-server\Prerequisites"
+if exist "rekindled-server" rmdir /s /q "rekindled-server"
+mkdir "rekindled-server"
+mkdir "rekindled-server\Loader"
+mkdir "rekindled-server\Server"
+mkdir "rekindled-server\Prerequisites"
 copy Resources\ReadMe.txt rekindled-server\ReadMe.txt
 xcopy /s Resources\Prerequisites rekindled-server\Prerequisites
 

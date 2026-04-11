@@ -29,8 +29,11 @@ fi
 
 echo "Using package source output path: $OUTPUT_ROOT"
 
+rm -rf rekindled-server
 mkdir -p rekindled-server
 mkdir -p rekindled-server/Server
+mkdir -p rekindled-server/Loader
+mkdir -p rekindled-server/Loader.Avalonia
 cp Resources/ReadMe.txt rekindled-server/ReadMe.txt
 
 ERR=0
@@ -75,6 +78,7 @@ else
 fi
 
 mkdir -p rekindled-server/Loader
+mkdir -p rekindled-server/Loader.Avalonia
 loader_output_dir=""
 
 if [ -n "$LOADER_AVALONIA_LINUX_PUBLISH_DIR" ] && [ -x "$LOADER_AVALONIA_LINUX_PUBLISH_DIR/Loader.Avalonia" ]; then
@@ -101,10 +105,10 @@ fi
 
 if [ -n "$loader_output_dir" ]; then
   if [ -d "$loader_output_dir" ]; then
-    cp -R "$loader_output_dir/" rekindled-server/Loader/
+    cp -R "$loader_output_dir/" rekindled-server/Loader.Avalonia/
   else
-    cp "$loader_output_dir" rekindled-server/Loader/
-    cp "${loader_output_dir%.dll}.pdb" rekindled-server/Loader/ 2>/dev/null || true
+    cp "$loader_output_dir" rekindled-server/Loader.Avalonia/
+    cp "${loader_output_dir%.dll}.pdb" rekindled-server/Loader.Avalonia/ 2>/dev/null || true
   fi
 else
   echo "WARNING: Loader.Avalonia output not found in $OUTPUT_ROOT or Source/Loader.Avalonia/bin/Release"

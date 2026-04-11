@@ -245,6 +245,13 @@ jobs:
           cd "${{ github.workspace }}"
           "${{ github.workspace }}/Tools/generate_package_linux.sh"
 
+      - name: Verify packaged files
+        shell: bash
+        run: |
+          echo "Packaged contents for ${GITHUB_RUN_ID} on ${{ matrix.platform }}"
+          cd "${{ github.workspace }}/rekindled-server"
+          find . | sort
+
       - name: Zip Release
         uses: vimtor/action-zip@5f1c4aa587ea41db1110df6a99981dbe19cee310 # v1
         with:
