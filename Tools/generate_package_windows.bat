@@ -74,28 +74,40 @@ if exist "%OUTPUT_ROOT%\Server.pdb" (
 
 if exist "%OUTPUT_ROOT%\Loader.exe" (
     xcopy /s "%OUTPUT_ROOT%\Loader.exe" rekindled-server\Loader\
-) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.exe" (
+) else if exist "Bin\x64_Release\x64\Release\net10.0-windows\Loader.dll" (
+    xcopy /s "Bin\x64_Release\x64\Release\net10.0-windows\*" rekindled-server\Loader\
+) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.dll" (
     xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader\
-) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.exe" (
+) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0-windows\Loader.dll" (
+    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0-windows\*" rekindled-server\Loader\
+) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.dll" (
     xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader\
-) else if exist "Source\Loader\bin\Release\net10.0-windows\Loader.exe" (
+) else if exist "Source\Loader\bin\Release\net10.0-windows\Loader.dll" (
     xcopy /s "Source\Loader\bin\Release\net10.0-windows\*" rekindled-server\Loader\
-) else if exist "Source\Loader\bin\Release\net10.0\Loader.exe" (
+) else if exist "Source\Loader\bin\Release\net10.0\Loader.dll" (
     xcopy /s "Source\Loader\bin\Release\net10.0\*" rekindled-server\Loader\
 ) else (
-    echo WARNING: Loader.exe not found in %OUTPUT_ROOT% or Source\Loader bin output
+    echo WARNING: Loader.exe or Loader.dll not found in %OUTPUT_ROOT% or Source\Loader bin output
     set ERR=1
 )
 if exist "%OUTPUT_ROOT%\Loader.Avalonia.exe" (
     xcopy /s "%OUTPUT_ROOT%\Loader.Avalonia.exe" rekindled-server\Loader\
+) else if exist "%OUTPUT_ROOT%\Loader.Avalonia.dll" (
+    xcopy /s "%OUTPUT_ROOT%\Loader.Avalonia.dll" rekindled-server\Loader\
 ) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.Avalonia.exe" (
+    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader\
+) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.Avalonia.dll" (
     xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader\
 ) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.Avalonia.exe" (
     xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader\
+) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.Avalonia.dll" (
+    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader\
 ) else if exist "Source\Loader.Avalonia\bin\Release\net10.0\Loader.Avalonia.exe" (
     xcopy /s "Source\Loader.Avalonia\bin\Release\net10.0\*" rekindled-server\Loader\
+) else if exist "Source\Loader.Avalonia\bin\Release\net10.0\Loader.Avalonia.dll" (
+    xcopy /s "Source\Loader.Avalonia\bin\Release\net10.0\*" rekindled-server\Loader\
 ) else (
-    echo WARNING: Loader.Avalonia.exe not found in %OUTPUT_ROOT% or Source\Loader.Avalonia bin output
+    echo WARNING: Loader.Avalonia.exe or Loader.Avalonia.dll not found in %OUTPUT_ROOT% or Source\Loader.Avalonia bin output
     set ERR=1
 )
 
