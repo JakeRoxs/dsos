@@ -29,6 +29,7 @@ jobs:
     permissions:
       contents: read
     env:
+      # Project paths are used for restore/build/test; package output paths are controlled inside package scripts.
       LOADER_PROJECT_PATH: Source/Loader/Loader.csproj
       LOADER_TESTS_PROJECT_PATH: Source/Loader/Tests/Loader.Tests.csproj
       LOADER_AVALONIA_PROJECT_PATH: Source/Loader.Avalonia/Loader.Avalonia.csproj
@@ -42,13 +43,11 @@ jobs:
             generator: Ninja
             platform: windows
             loader_avalonia_runtime: win-x64
-            loader_avalonia_publish_dir: intermediate/publish/windows/Loader.Avalonia
           - name: linux-ninja
             os: ubuntu-latest
             generator: Ninja
             platform: linux
             loader_avalonia_runtime: linux-x64
-            loader_avalonia_publish_dir: intermediate/publish/linux/Loader.Avalonia
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -168,16 +167,6 @@ jobs:
         if: matrix.name == 'windows-ninja' || matrix.name == 'linux-ninja'
         run: dotnet test ${{ env.LOADER_AVALONIA_TESTS_PROJECT_PATH }} --configuration Release --no-build --no-restore --verbosity normal -p:Platform=x64
 
-      - name: Publish Loader (Windows)
-        if: matrix.name == 'windows-ninja'
-        run: |
-          dotnet publish ${{ env.LOADER_PROJECT_PATH }} --configuration Release --runtime win-x64 --self-contained true -p:Platform=x64 -p:UseAppHost=true -p:PublishSingleFile=false -o ${{ github.workspace }}/intermediate/publish/windows/Loader
-
-      - name: Publish Loader.Avalonia
-        if: matrix.name == 'windows-ninja' || matrix.name == 'linux-ninja'
-        run: |
-          dotnet publish ${{ env.LOADER_AVALONIA_PROJECT_PATH }} --configuration Release --runtime ${{ matrix.loader_avalonia_runtime }} --self-contained true -p:Platform=x64 -p:UseAppHost=true -p:PublishSingleFile=false -o ${{ github.workspace }}/${{ matrix.loader_avalonia_publish_dir }}
-
       - name: Build on Windows (Ninja)
         if: matrix.name == 'windows-ninja'
         working-directory: ${{ github.workspace }}/intermediate/build
@@ -230,8 +219,9 @@ jobs:
         if: matrix.platform == 'windows'
         shell: pwsh
         env:
-          LOADER_WINDOWS_PUBLISH_DIR: ${{ github.workspace }}/intermediate/publish/windows/Loader
-          LOADER_AVALONIA_WINDOWS_PUBLISH_DIR: ${{ github.workspace }}/intermediate/publish/windows/Loader.Avalonia
+          PACKAGE_BUILD_CONFIGURATION: Release
+          PACKAGE_PLATFORM: x64
+          LOADER_WINDOWS_RUNTIME: win-x64
         run: |
           cd "${{ github.workspace }}"
           ./Tools/generate_package_windows.bat
@@ -240,7 +230,9 @@ jobs:
         if: matrix.platform == 'linux'
         shell: bash
         env:
-          LOADER_AVALONIA_LINUX_PUBLISH_DIR: ${{ github.workspace }}/intermediate/publish/linux/Loader.Avalonia
+          PACKAGE_BUILD_CONFIGURATION: Release
+          PACKAGE_PLATFORM: x64
+          LOADER_AVALONIA_LINUX_RUNTIME: linux-x64
         run: |
           cd "${{ github.workspace }}"
           "${{ github.workspace }}/Tools/generate_package_linux.sh"

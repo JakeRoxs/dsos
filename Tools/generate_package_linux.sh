@@ -1,77 +1,108 @@
 #!/usr/bin/env bash
 
-OUTPUT_ROOT="Bin/x64_Release"
-if [ ! -d "$OUTPUT_ROOT" ]; then
-  if [ -d "bin/x64_release" ]; then
-    OUTPUT_ROOT="bin/x64_release"
-  elif [ -d "Bin/AnyCPU_Release" ]; then
-    OUTPUT_ROOT="Bin/AnyCPU_Release"
-  elif [ -d "bin/AnyCPU_Release" ]; then
-    OUTPUT_ROOT="bin/AnyCPU_Release"
-  elif [ -d "intermediate/build/bin/x64_release" ]; then
-    OUTPUT_ROOT="intermediate/build/bin/x64_release"
-  elif [ -d "intermediate/build/Source/Server" ]; then
-    OUTPUT_ROOT="intermediate/build/Source/Server"
-  elif [ -d "intermediate/build/Source/Server.DarkSouls3" ]; then
-    OUTPUT_ROOT="intermediate/build/Source/Server.DarkSouls3"
-  elif [ -d "intermediate/build/Source/Server.DarkSouls2" ]; then
-    OUTPUT_ROOT="intermediate/build/Source/Server.DarkSouls2"
-  elif [ -d "intermediate/make/bin/x64_release" ]; then
-    OUTPUT_ROOT="intermediate/make/bin/x64_release"
-  elif [ -d "intermediate/make/Source/Server" ]; then
-    OUTPUT_ROOT="intermediate/make/Source/Server"
-  elif [ -d "intermediate/make/Source/Server.DarkSouls3" ]; then
-    OUTPUT_ROOT="intermediate/make/Source/Server.DarkSouls3"
-  elif [ -d "intermediate/make/Source/Server.DarkSouls2" ]; then
-    OUTPUT_ROOT="intermediate/make/Source/Server.DarkSouls2"
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
+
+PACKAGE_BUILD_CONFIGURATION="${PACKAGE_BUILD_CONFIGURATION:-Release}"
+PACKAGE_PLATFORM="${PACKAGE_PLATFORM:-x64}"
+LOADER_AVALONIA_LINUX_RUNTIME="${LOADER_AVALONIA_LINUX_RUNTIME:-linux-x64}"
+LOADER_AVALONIA_LINUX_PUBLISH_DIR="${LOADER_AVALONIA_LINUX_PUBLISH_DIR:-intermediate/publish/canonical/Loader.Avalonia}"
+
+OUTPUT_ROOT=""
+for candidate in \
+  build/Source/Server \
+  intermediate/build/Source/Server \
+  intermediate/make/Source/Server \
+  bin/x64_release; do
+  if [ -d "$candidate" ]; then
+    OUTPUT_ROOT="$candidate"
+    break
   fi
+ done
+
+if [ -z "$OUTPUT_ROOT" ]; then
+  echo "ERROR: No native Linux build output directory found. Check your build output path."
+  exit 1
+fi
+
+if [ "${SKIP_DOTNET_PUBLISH:-0}" != "1" ]; then
+  echo "Publishing Loader.Avalonia artifacts with canonical package-script settings..."
+  dotnet publish Source/Loader.Avalonia/Loader.Avalonia.csproj \
+    --configuration "$PACKAGE_BUILD_CONFIGURATION" \
+    --runtime "$LOADER_AVALONIA_LINUX_RUNTIME" \
+    --self-contained true \
+    -p:Platform="$PACKAGE_PLATFORM" \
+    -p:UseAppHost=true \
+    -p:PublishSingleFile=true \
+    -p:EnableCompressionInSingleFile=true \
+    -p:IncludeNativeLibrariesForSelfExtract=true \
+    -p:DebugType=None \
+    -p:DebugSymbols=false \
+    -o "$LOADER_AVALONIA_LINUX_PUBLISH_DIR"
 fi
 
 echo "Using package source output path: $OUTPUT_ROOT"
+echo "Packaging into: $(pwd)/rekindled-server"
+
+copy_with_log() {
+  echo "Including: $1 -> $2"
+  cp "$1" "$2"
+}
+
+copy_dir_with_log() {
+  echo "Including directory: $1 -> $2"
+  cp -R "$1" "$2"
+}
 
 rm -rf rekindled-server
 mkdir -p rekindled-server
 mkdir -p rekindled-server/Server
 mkdir -p rekindled-server/Loader
 mkdir -p rekindled-server/Loader.Avalonia
-cp Resources/ReadMe.txt rekindled-server/ReadMe.txt
+copy_with_log Resources/ReadMe.txt rekindled-server/ReadMe.txt
 
 ERR=0
-LOADER_AVALONIA_LINUX_PUBLISH_DIR="${LOADER_AVALONIA_LINUX_PUBLISH_DIR:-}"
 
 if [ -f "$OUTPUT_ROOT/steam_appid.txt" ]; then
-  cp "$OUTPUT_ROOT/steam_appid.txt" rekindled-server/Server/
+  copy_with_log "$OUTPUT_ROOT/steam_appid.txt" rekindled-server/Server/
 elif [ -f "Resources/steam_appid.txt" ]; then
-  cp "Resources/steam_appid.txt" rekindled-server/Server/
+  copy_with_log "Resources/steam_appid.txt" rekindled-server/Server/
 else
   echo "WARNING: steam_appid.txt not found in $OUTPUT_ROOT or Resources"
   ERR=1
 fi
 
 if [ -f "$OUTPUT_ROOT/libsteam_api.so" ]; then
-  cp "$OUTPUT_ROOT/libsteam_api.so" rekindled-server/Server/
+  copy_with_log "$OUTPUT_ROOT/libsteam_api.so" rekindled-server/Server/
 elif [ -f "Source/ThirdParty/steam/redistributable_bin/linux64/libsteam_api.so" ]; then
-  cp "Source/ThirdParty/steam/redistributable_bin/linux64/libsteam_api.so" rekindled-server/Server/
+  copy_with_log "Source/ThirdParty/steam/redistributable_bin/linux64/libsteam_api.so" rekindled-server/Server/
 elif [ -f "Source/ThirdParty/steam/redistributable_bin/linux32/libsteam_api.so" ]; then
-  cp "Source/ThirdParty/steam/redistributable_bin/linux32/libsteam_api.so" rekindled-server/Server/
+  copy_with_log "Source/ThirdParty/steam/redistributable_bin/linux32/libsteam_api.so" rekindled-server/Server/
 else
   echo "WARNING: libsteam_api.so not found in $OUTPUT_ROOT or Source/ThirdParty"
   ERR=1
 fi
 
 if [ -f "$OUTPUT_ROOT/Server" ]; then
-  cp "$OUTPUT_ROOT/Server" rekindled-server/Server/
+  copy_with_log "$OUTPUT_ROOT/Server" rekindled-server/Server/
+elif [ -f "build/Source/Server/Server" ]; then
+  copy_with_log "build/Source/Server/Server" rekindled-server/Server/
+elif [ -f "intermediate/build/Source/Server/Server" ]; then
+  copy_with_log "intermediate/build/Source/Server/Server" rekindled-server/Server/
 elif [ -f "intermediate/make/Source/Server/Server" ]; then
-  cp "intermediate/make/Source/Server/Server" rekindled-server/Server/
+  copy_with_log "intermediate/make/Source/Server/Server" rekindled-server/Server/
 else
-  echo "WARNING: Server executable not found in $OUTPUT_ROOT or intermediate/make/Source/Server"
+  echo "WARNING: Linux Server executable not found in $OUTPUT_ROOT or build/Source/Server or intermediate/make/Source/Server"
   ERR=1
 fi
 
 if [ -d "$OUTPUT_ROOT/WebUI" ]; then
-  cp -R "$OUTPUT_ROOT/WebUI/" rekindled-server/Server/WebUI/
+  copy_dir_with_log "$OUTPUT_ROOT/WebUI/" rekindled-server/Server/WebUI/
 elif [ -d "Source/WebUI" ]; then
-  cp -R "Source/WebUI/" rekindled-server/Server/WebUI/
+  copy_dir_with_log "Source/WebUI/" rekindled-server/Server/WebUI/
 else
   echo "WARNING: WebUI folder not found in $OUTPUT_ROOT or Source/WebUI"
   ERR=1
@@ -79,48 +110,11 @@ fi
 
 mkdir -p rekindled-server/Loader
 mkdir -p rekindled-server/Loader.Avalonia
-loader_output_dir=""
 
-if [ -n "$LOADER_AVALONIA_LINUX_PUBLISH_DIR" ] && [ -x "$LOADER_AVALONIA_LINUX_PUBLISH_DIR/Loader.Avalonia" ]; then
-  loader_output_dir="$LOADER_AVALONIA_LINUX_PUBLISH_DIR"
-fi
-
-if [ -z "$loader_output_dir" ]; then
-  for candidate in \
-    "$OUTPUT_ROOT/Loader.Avalonia" \
-    "$OUTPUT_ROOT/x64/Release/net10.0" \
-    "$OUTPUT_ROOT/Loader.Avalonia.dll" \
-    "Source/Loader.Avalonia/bin/Release/net10.0" \
-    "Source/Loader.Avalonia/bin/Release/net10.0-windows" \
-    "Source/Loader.Avalonia/bin/Release/net10.0/linux-x64" \
-    "Source/Loader.Avalonia/bin/Release/net10.0-windows/linux-x64" \
-    "Source/Loader.Avalonia/bin/Release/net10.0/" \
-    "Source/Loader.Avalonia/bin/Release/net10.0-windows/"; do
-    if [ -e "$candidate" ]; then
-      loader_output_dir="$candidate"
-      break
-    fi
-  done
-fi
-
-if [ -n "$loader_output_dir" ]; then
-  if [ -d "$loader_output_dir" ]; then
-    cp -R "$loader_output_dir/" rekindled-server/Loader.Avalonia/
-  else
-    cp "$loader_output_dir" rekindled-server/Loader.Avalonia/
-    cp "${loader_output_dir%.dll}.pdb" rekindled-server/Loader.Avalonia/ 2>/dev/null || true
-  fi
+if [ -d "$LOADER_AVALONIA_LINUX_PUBLISH_DIR" ] && [ -x "$LOADER_AVALONIA_LINUX_PUBLISH_DIR/Loader.Avalonia" ]; then
+  copy_dir_with_log "$LOADER_AVALONIA_LINUX_PUBLISH_DIR/" rekindled-server/Loader.Avalonia/
 else
-  echo "WARNING: Loader.Avalonia output not found in $OUTPUT_ROOT or Source/Loader.Avalonia/bin/Release"
-  echo "Candidate paths tried:"
-  echo "  $OUTPUT_ROOT/Loader.Avalonia"
-  echo "  $OUTPUT_ROOT/x64/Release/net10.0"
-  echo "  $OUTPUT_ROOT/Loader.Avalonia.dll"
-  echo "  Source/Loader.Avalonia/bin/Release/net10.0"
-  echo "  Source/Loader.Avalonia/bin/Release/net10.0-windows"
-  echo "  Source/Loader.Avalonia/bin/Release/net10.0/linux-x64"
-  echo "  Source/Loader.Avalonia/bin/Release/net10.0-windows/linux-x64"
-  ls -la "Source/Loader.Avalonia/bin/Release" 2>/dev/null || true
+  echo "WARNING: Loader.Avalonia output not found in canonical publish dir: $LOADER_AVALONIA_LINUX_PUBLISH_DIR"
   ERR=1
 fi
 
@@ -130,3 +124,5 @@ if [ "$ERR" -eq 1 ]; then
   exit 1
 fi
 
+echo "Packaged files being added to the zip:"
+find rekindled-server -type f | sort | sed 's#^#  #'

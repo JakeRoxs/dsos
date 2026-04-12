@@ -209,6 +209,33 @@ pwsh .\Tools\build-cmake.ps1 -Generator "Ninja" -BuildType Debug
 pwsh .\Tools\build-cmake.ps1 -Generator "Visual Studio 18 2026" -BuildType Release
 ```
 
+## Canonical package output paths
+
+Release packaging uses script-first entrypoints as the source of truth:
+
+- `Tools/generate_package_windows.bat`
+- `Tools/generate_package_linux.sh`
+
+Managed publish outputs are centralized to canonical paths owned by project configuration:
+
+- `intermediate/publish/canonical/Loader`
+- `intermediate/publish/canonical/Loader.Avalonia`
+
+The package scripts publish into these canonical locations and then assemble
+`rekindled-server/` from those outputs.
+
+Local package generation examples:
+
+```powershell
+# Windows
+./Tools/generate_package_windows.bat
+```
+
+```bash
+# Linux
+./Tools/generate_package_linux.sh
+```
+
 ## Using nix (currently disabled until I figure out how to deal with dependencies in nix actions) 
 
 ```sh

@@ -19,6 +19,10 @@
     <Platforms>x64</Platforms>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <PublishDir>$(RepoRoot)\intermediate\publish\canonical\Loader\</PublishDir>
+  </PropertyGroup>
+
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationManifest>.\app.manifest</ApplicationManifest>

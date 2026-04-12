@@ -1,14 +1,32 @@
 :: Assumed to be run from root directory.
+pushd "%~dp0\.." >nul 2>nul
+if errorlevel 1 (
+    echo ERROR: Failed to change directory to repository root.
+    exit /b 1
+)
 
-set OUTPUT_ROOT=Bin\x64_release
+if not defined PACKAGE_BUILD_CONFIGURATION set PACKAGE_BUILD_CONFIGURATION=Release
+if not defined PACKAGE_PLATFORM set PACKAGE_PLATFORM=x64
+if not defined LOADER_WINDOWS_RUNTIME set LOADER_WINDOWS_RUNTIME=win-x64
+if not defined LOADER_WINDOWS_PUBLISH_DIR set LOADER_WINDOWS_PUBLISH_DIR=intermediate\publish\canonical\Loader
+if not defined LOADER_AVALONIA_WINDOWS_PUBLISH_DIR set LOADER_AVALONIA_WINDOWS_PUBLISH_DIR=intermediate\publish\canonical\Loader.Avalonia
+
+if /I not "%SKIP_DOTNET_PUBLISH%"=="1" (
+    echo Publishing loader artifacts to %LOADER_WINDOWS_PUBLISH_DIR%...
+    dotnet publish Source\Loader\Loader.csproj --configuration %PACKAGE_BUILD_CONFIGURATION% --runtime %LOADER_WINDOWS_RUNTIME% --self-contained true -p:Platform=%PACKAGE_PLATFORM% -p:UseAppHost=true -p:PublishSingleFile=false -o "%LOADER_WINDOWS_PUBLISH_DIR%"
+    if errorlevel 1 exit /b 1
+
+    echo Publishing Loader.Avalonia artifacts to %LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%...
+    dotnet publish Source\Loader.Avalonia\Loader.Avalonia.csproj --configuration %PACKAGE_BUILD_CONFIGURATION% --runtime %LOADER_WINDOWS_RUNTIME% --self-contained true -p:Platform=%PACKAGE_PLATFORM% -p:UseAppHost=true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%"
+    if errorlevel 1 exit /b 1
+)
+
+set OUTPUT_ROOT=build\Source\Server
 if not exist "%OUTPUT_ROOT%" (
-    if exist "Bin\x64_Release" set OUTPUT_ROOT=Bin\x64_Release
+    if exist "build\Source\Server.DarkSouls3" set OUTPUT_ROOT=build\Source\Server.DarkSouls3
 )
 if not exist "%OUTPUT_ROOT%" (
-    if exist "Bin\AnyCPU_Release" set OUTPUT_ROOT=Bin\AnyCPU_Release
-)
-if not exist "%OUTPUT_ROOT%" (
-    if exist "intermediate\build\bin\x64_release" set OUTPUT_ROOT=intermediate\build\bin\x64_release
+    if exist "build\Source\Server.DarkSouls2" set OUTPUT_ROOT=build\Source\Server.DarkSouls2
 )
 if not exist "%OUTPUT_ROOT%" (
     if exist "intermediate\build\Source\Server" set OUTPUT_ROOT=intermediate\build\Source\Server
@@ -19,16 +37,25 @@ if not exist "%OUTPUT_ROOT%" (
 if not exist "%OUTPUT_ROOT%" (
     if exist "intermediate\build\Source\Server.DarkSouls2" set OUTPUT_ROOT=intermediate\build\Source\Server.DarkSouls2
 )
+if not exist "%OUTPUT_ROOT%" (
+    echo ERROR: No native Windows build output directory found. Check your build output path.
+    exit /b 1
+)
 
 echo Using package source output path: %OUTPUT_ROOT%
+echo Packaging into: %CD%\rekindled-server
 
 if exist "rekindled-server" rmdir /s /q "rekindled-server"
 mkdir "rekindled-server"
 mkdir "rekindled-server\Loader"
 mkdir "rekindled-server\Server"
 mkdir "rekindled-server\Prerequisites"
+echo Including: Resources\ReadMe.txt -> rekindled-server\ReadMe.txt
 copy Resources\ReadMe.txt rekindled-server\ReadMe.txt
-xcopy /s Resources\Prerequisites rekindled-server\Prerequisites
+if exist "Resources\Prerequisites" (
+    echo Including directory: Resources\Prerequisites -> rekindled-server\Prerequisites
+    xcopy /s Resources\Prerequisites rekindled-server\Prerequisites
+)
 
 set ERR=0
 
@@ -73,86 +100,37 @@ if exist "%OUTPUT_ROOT%\Server.pdb" (
     set ERR=1
 )
 
-if defined LOADER_WINDOWS_PUBLISH_DIR (
-    if exist "%LOADER_WINDOWS_PUBLISH_DIR%\Loader.exe" (
-        xcopy /s "%LOADER_WINDOWS_PUBLISH_DIR%\*" rekindled-server\Loader\
-        goto :loader_done
-    )
-)
-
-if not exist "rekindled-server\Loader.Avalonia" mkdir "rekindled-server\Loader.Avalonia"
-
-if exist "%OUTPUT_ROOT%\Loader.Avalonia.exe" (
-    xcopy /s "%OUTPUT_ROOT%\Loader.exe" rekindled-server\Loader\
-) else if exist "Bin\x64_Release\x64\Release\net10.0-windows\Loader.dll" (
-    xcopy /s "Bin\x64_Release\x64\Release\net10.0-windows\*" rekindled-server\Loader\
-) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.dll" (
-    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader\
-) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0-windows\Loader.dll" (
-    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0-windows\*" rekindled-server\Loader\
-) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.dll" (
-    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader\
-) else if exist "Source\Loader\bin\Release\net10.0-windows\Loader.dll" (
-    xcopy /s "Source\Loader\bin\Release\net10.0-windows\*" rekindled-server\Loader\
-) else if exist "Source\Loader\bin\Release\net10.0\Loader.dll" (
-    xcopy /s "Source\Loader\bin\Release\net10.0\*" rekindled-server\Loader\
+if exist "%LOADER_WINDOWS_PUBLISH_DIR%\Loader.exe" (
+    xcopy /s "%LOADER_WINDOWS_PUBLISH_DIR%\*" rekindled-server\Loader\
+    goto :loader_done
+) else if exist "%LOADER_WINDOWS_PUBLISH_DIR%\Loader.dll" (
+    xcopy /s "%LOADER_WINDOWS_PUBLISH_DIR%\*" rekindled-server\Loader\
+    goto :loader_done
 ) else (
-    echo WARNING: Loader.exe or Loader.dll not found in %OUTPUT_ROOT% or Source\Loader bin output
+    echo WARNING: Loader.exe or Loader.dll not found in canonical publish dir: %LOADER_WINDOWS_PUBLISH_DIR%
     set ERR=1
 )
 :loader_done
 
 mkdir rekindled-server\Loader.Avalonia
 
-if defined LOADER_AVALONIA_WINDOWS_PUBLISH_DIR (
-    if exist "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\Loader.Avalonia.exe" (
-        xcopy /s "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\*" rekindled-server\Loader.Avalonia\
-        goto :loader_avalonia_done
-    )
-)
-
-if exist "%OUTPUT_ROOT%\Loader.Avalonia.exe" (
-    xcopy /s "%OUTPUT_ROOT%\Loader.Avalonia.exe" rekindled-server\Loader.Avalonia\
-) else if exist "%OUTPUT_ROOT%\Loader.Avalonia.dll" (
-    xcopy /s "%OUTPUT_ROOT%\Loader.Avalonia.dll" rekindled-server\Loader.Avalonia\
-) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.Avalonia.exe" (
-    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader.Avalonia\
-) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.Avalonia.dll" (
-    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader.Avalonia\
-) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.Avalonia.exe" (
-    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader.Avalonia\
-) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.Avalonia.dll" (
-    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader.Avalonia\
-) else if exist "Source\Loader.Avalonia\bin\Release\net10.0\Loader.Avalonia.exe" (
-    xcopy /s "Source\Loader.Avalonia\bin\Release\net10.0\*" rekindled-server\Loader.Avalonia\
-) else if exist "Source\Loader.Avalonia\bin\Release\net10.0\Loader.Avalonia.dll" (
-    xcopy /s "Source\Loader.Avalonia\bin\Release\net10.0\*" rekindled-server\Loader.Avalonia\
+if exist "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\Loader.Avalonia.exe" (
+    xcopy /s "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\*" rekindled-server\Loader.Avalonia\
+    goto :loader_avalonia_done
+) else if exist "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\Loader.Avalonia.dll" (
+    xcopy /s "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\*" rekindled-server\Loader.Avalonia\
+    goto :loader_avalonia_done
 ) else (
-    echo WARNING: Loader.Avalonia.exe or Loader.Avalonia.dll not found in %OUTPUT_ROOT% or Source\Loader.Avalonia bin output
+    echo WARNING: Loader.Avalonia.exe or Loader.Avalonia.dll not found in canonical publish dir: %LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%
     set ERR=1
 )
 :loader_avalonia_done
 
-if defined LOADER_AVALONIA_WINDOWS_PUBLISH_DIR (
-    if exist "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\Loader.Avalonia.pdb" (
-        xcopy /s "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\Loader.Avalonia.pdb" rekindled-server\Loader.Avalonia\
-        goto :loader_avalonia_pdb_done
-    )
-)
-
-if exist "%OUTPUT_ROOT%\Loader.Avalonia.pdb" (
-    xcopy /s "%OUTPUT_ROOT%\Loader.Avalonia.pdb" rekindled-server\Loader.Avalonia\
-) else if exist "Bin\x64_Release\x64\Release\net10.0\Loader.Avalonia.pdb" (
-    xcopy /s "Bin\x64_Release\x64\Release\net10.0\*" rekindled-server\Loader.Avalonia\
-) else if exist "Bin\AnyCPU_Release\x64\Release\net10.0\Loader.Avalonia.pdb" (
-    xcopy /s "Bin\AnyCPU_Release\x64\Release\net10.0\*" rekindled-server\Loader.Avalonia\
-) else if exist "Source\Loader.Avalonia\bin\Release\net10.0\Loader.Avalonia.pdb" (
-    xcopy /s "Source\Loader.Avalonia\bin\Release\net10.0\*" rekindled-server\Loader.Avalonia\
+if exist "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\Loader.Avalonia.pdb" (
+    xcopy /s "%LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%\Loader.Avalonia.pdb" rekindled-server\Loader.Avalonia\
 ) else (
-    echo WARNING: Loader.Avalonia.pdb not found in %OUTPUT_ROOT% or Source\Loader.Avalonia bin output
-    set ERR=1
+    echo INFO: Loader.Avalonia.pdb not found in canonical publish dir %LOADER_AVALONIA_WINDOWS_PUBLISH_DIR%; continuing without symbols.
 )
-:loader_avalonia_pdb_done
 
 if exist "%OUTPUT_ROOT%\Injector.pdb" (
     xcopy /s "%OUTPUT_ROOT%\Injector.pdb" rekindled-server\Loader\
@@ -182,7 +160,11 @@ if exist "%OUTPUT_ROOT%\Injector.dll" (
 if "%ERR%"=="1" (
     echo ERROR: One or more required files were missing. Check build output path and CMake configuration.
     dir /b "%OUTPUT_ROOT%" 2>nul
+    popd >nul 2>nul
     exit /b 1
 ) else (
     echo Package preparation succeeded.
+    echo Packaged files being added to the zip:
+    dir /b /s rekindled-server
+    popd >nul 2>nul
 )
